@@ -322,6 +322,11 @@ body[data-screen="title"] #stage {
   border: 0;
 }
 
+/* A legend shrinks to its words unless told otherwise; it spans the row to name what is chosen */
+.choices .field-label {
+  width: 100%;
+}
+
 .choice-keys {
   display: flex;
   gap: 6px;
@@ -348,6 +353,14 @@ body[data-screen="title"] #stage {
     inset 0 0 0 2px #fff,
     0 3px 0 #000;
   color: var(--gold);
+}
+
+/* A preset's key says how long its game runs, beneath its name */
+.choice-keys small {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
+  opacity: 0.75;
 }
 
 .choice-keys label:has(input:focus-visible) {

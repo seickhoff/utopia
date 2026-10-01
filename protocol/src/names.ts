@@ -1,7 +1,7 @@
 /** As many letters as the classic screen's border prints over one island, with a gap between. */
 export const NAME_LENGTH = 9;
-/** The computer's name: King Utopus, who founded the island in Thomas More's Utopia (1516). */
-export const COMPUTER_NAME = "UTOPUS";
+/** The computer's name, printed over the island it governs. */
+export const COMPUTER_NAME = "COMPUTER";
 const UNNAMED = "GOVERNOR";
 
 /** A governor's name as the cartridge's letters print it: capitals, digits and single spaces. */

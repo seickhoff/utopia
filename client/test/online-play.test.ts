@@ -164,9 +164,9 @@ describe("OnlinePlay", () => {
   it("renames the rival when the computer takes over their island", () => {
     const { link, stage } = aGameUnderWay();
 
-    link().delivers({ type: "started", names: { left: "UTOPUS", right: "GRACE" } });
+    link().delivers({ type: "started", names: { left: "COMPUTER", right: "GRACE" } });
 
-    expect(stage.renamed).toEqual([{ left: "UTOPUS", right: "GRACE" }]);
+    expect(stage.renamed).toEqual([{ left: "COMPUTER", right: "GRACE" }]);
   });
 
   it("rejoins its seat when a lost connection comes back", () => {

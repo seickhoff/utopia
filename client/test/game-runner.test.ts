@@ -81,7 +81,7 @@ class SharedSession extends StillSession {
   override readonly pausable: boolean = false;
 }
 
-const MATCH: Match = { mine: "left", names: { left: "ADA", right: "UTOPUS" }, rivalled: true };
+const MATCH: Match = { mine: "left", names: { left: "ADA", right: "COMPUTER" }, rivalled: true };
 
 function aFrame(seconds: number): GameFrame {
   const events: GameEvent[] = [];

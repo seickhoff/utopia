@@ -148,12 +148,10 @@ function dioramaOr(
   }
 }
 
-/** Starts a game in the browser, or one on the server: either way the setup is kept first. */
+/** Starts a game in the browser, or one on the server, as the player has set it up. */
 function begin(parts: Parts): GameSetup {
   parts.speaker.prepare();
-  const setup = parts.store.getView().setup;
-  parts.setups.save(setup);
-  return setup;
+  return parts.store.getView().setup;
 }
 
 function playSolo(parts: Parts): void {
@@ -198,17 +196,15 @@ function onlineActions(parts: Parts) {
 }
 
 function settingActions(parts: Parts) {
-  const { store } = parts;
   return {
-    changeSetup: (change: Partial<GameSetup>) =>
-      store.update({ setup: { ...store.getView().setup, ...change } }),
+    changeSetup: (change: Partial<GameSetup>) => keepSetting(parts, () => change),
     toggleView: () => keepSetting(parts, (setup) => ({ view: TOGGLED.view[setup.view] })),
     toggleSound: () => keepSetting(parts, (setup) => ({ sound: TOGGLED.sound[setup.sound] })),
     toggleLabels: () => keepSetting(parts, (setup) => ({ labels: TOGGLED.labels[setup.labels] })),
   };
 }
 
-/** Changes a setting from the screen, and keeps it for the next visit. */
+/** Changes a setting, on the title or during a game, and keeps it for the next visit. */
 function keepSetting(parts: Parts, change: (setup: GameSetup) => Partial<GameSetup>): void {
   const setup = parts.store.getView().setup;
   parts.store.update({ setup: { ...setup, ...change(setup) } });

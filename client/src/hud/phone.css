@@ -129,6 +129,7 @@ body[data-hold="upright"] .turn-notice {
     grid-template-areas:
       "logo title"
       "name rival"
+      "presets presets"
       "pair view"
       "take online";
     align-items: end;
@@ -161,6 +162,10 @@ body[data-hold="upright"] .turn-notice {
 
   .name-field {
     grid-area: name;
+  }
+
+  .preset-choices {
+    grid-area: presets;
   }
 
   .setup-pair {

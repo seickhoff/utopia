@@ -16,7 +16,7 @@ import { GOLD_READOUTS, type Readouts } from "../src/classic/status-row.js";
 const SCREENSHOT_SHAPE = 756 / 480;
 
 const CENSUS_HELD: Readouts = { left: "population", right: "population" };
-const NAMES = { left: "ADA", right: "UTOPUS" } as const;
+const NAMES = { left: "ADA", right: "COMPUTER" } as const;
 const IN_PLAY: LabelScene = {
   names: NAMES,
   readouts: GOLD_READOUTS,
@@ -53,7 +53,7 @@ describe("screenLabels", () => {
 
     expect(named).toEqual([
       ["ADA", COLOURS.darkGreen],
-      ["UTOPUS", COLOURS.red],
+      ["COMPUTER", COLOURS.red],
     ]);
   });
 
@@ -126,7 +126,7 @@ describe("screenLabels at year end", () => {
   it("still names each island's governor above their island", () => {
     const named = above(labelsOf({ phase: "over" })).map((label) => label.text);
 
-    expect(named).toEqual(["ADA", "UTOPUS"]);
+    expect(named).toEqual(["ADA", "COMPUTER"]);
   });
 });
 

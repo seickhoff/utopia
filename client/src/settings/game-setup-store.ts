@@ -1,4 +1,5 @@
-import { DEFAULT_GAME_OPTIONS, sanitizeGameOptions, type GameOptions } from "@utopia/engine";
+import { sanitizeGameOptions, type GameOptions } from "@utopia/engine";
+import { PRESET_OPTIONS } from "./game-presets.js";
 import type { KeyValueStore } from "./key-value-store.js";
 
 /** Who governs the other island: no one (the original's solo game), or the computer. */
@@ -6,8 +7,8 @@ export type OpponentChoice = "none" | "easy" | "normal" | "hard";
 export const OPPONENT_CHOICES: readonly OpponentChoice[] = ["none", "easy", "normal", "hard"];
 
 /** How the islands are shown: as the Intellivision drew them, or as a lit diorama. */
-export type ViewMode = "diorama" | "classic";
-export const VIEW_MODES: readonly ViewMode[] = ["diorama", "classic"];
+export type ViewMode = "classic" | "diorama";
+export const VIEW_MODES: readonly ViewMode[] = ["classic", "diorama"];
 
 /** Whether the cartridge's sounds are heard. */
 export type SoundSetting = "on" | "off";
@@ -41,10 +42,13 @@ export interface GameSetup extends GameOptions {
   readonly name: string;
 }
 
+/** A new player's term and year: the classic preset, longer than the manual's ten years. */
+const DEFAULT_OPTIONS = PRESET_OPTIONS.classic;
+
 export const DEFAULT_SETUP: GameSetup = {
-  ...DEFAULT_GAME_OPTIONS,
+  ...DEFAULT_OPTIONS,
   opponent: "normal",
-  view: "diorama",
+  view: "classic",
   sound: "on",
   labels: "on",
   name: "",
@@ -52,7 +56,7 @@ export const DEFAULT_SETUP: GameSetup = {
 
 const KEY = "utopia.setup";
 
-/** The last game's setup, kept so the next begins where the player left off. */
+/** The player's setup, kept as they change it, so the next visit begins where they left off. */
 export class GameSetupStore {
   constructor(private readonly store: KeyValueStore) {}
 
@@ -77,7 +81,7 @@ export function sanitizeSetup(setup: Partial<GameSetup>): GameSetup {
   const sound = SOUND_SETTINGS.find((setting) => setting === setup.sound);
   const labels = LABEL_SETTINGS.find((setting) => setting === setup.labels);
   return {
-    ...sanitizeGameOptions(setup),
+    ...sanitizeGameOptions({ ...DEFAULT_OPTIONS, ...setup }),
     opponent: opponent ?? DEFAULT_SETUP.opponent,
     view: view ?? DEFAULT_SETUP.view,
     sound: sound ?? DEFAULT_SETUP.sound,

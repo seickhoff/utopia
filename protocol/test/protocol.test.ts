@@ -32,8 +32,8 @@ describe("governorName", () => {
     expect(governorName("?!")).toBe("GOVERNOR");
   });
 
-  it("names the computer after the island's founder", () => {
-    expect(COMPUTER_NAME).toBe("UTOPUS");
+  it("names the computer plainly, so a player knows who governs the other island", () => {
+    expect(COMPUTER_NAME).toBe("COMPUTER");
   });
 });
 

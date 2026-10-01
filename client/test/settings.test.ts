@@ -1,14 +1,22 @@
+import { sanitizeGameOptions } from "@utopia/engine";
 import { describe, expect, it } from "vitest";
+import {
+  GAME_PRESETS,
+  PRESET_OPTIONS,
+  gameMinutes,
+  presetOf,
+} from "../src/settings/game-presets.js";
 import {
   DEFAULT_SETUP,
   GameSetupStore,
+  VIEW_MODES,
   isNamed,
   sanitizeSetup,
 } from "../src/settings/game-setup-store.js";
 import { BrowserStore, MemoryStore } from "../src/settings/key-value-store.js";
 
 describe("GameSetupStore", () => {
-  it("starts from the manual's advice and a computer rival", () => {
+  it("starts from the default setup when nothing was stored", () => {
     expect(new GameSetupStore(new MemoryStore()).load()).toEqual(DEFAULT_SETUP);
   });
 
@@ -57,17 +65,33 @@ describe("sanitizeSetup", () => {
       rounds: 50,
       roundSeconds: 30,
       opponent: "easy",
-      view: "diorama",
+      view: "classic",
       sound: "on",
       labels: "on",
       name: "",
     });
   });
 
+  it("fills a term that was never stored from the classic preset", () => {
+    const setup = sanitizeSetup({ roundSeconds: 60 });
+
+    expect([setup.rounds, setup.roundSeconds]).toEqual([PRESET_OPTIONS.classic.rounds, 60]);
+  });
+
   it("replaces an unknown opponent", () => {
     const setup = sanitizeSetup({ opponent: "grandmaster" as never });
 
     expect(setup.opponent).toBe("normal");
+  });
+
+  it("shows the classic screen unless the diorama was chosen", () => {
+    const setup = sanitizeSetup({ view: "hologram" as never });
+
+    expect(setup.view).toBe("classic");
+  });
+
+  it("offers the classic screen first, then the diorama", () => {
+    expect(VIEW_MODES).toEqual(["classic", "diorama"]);
   });
 
   it("names the screen's numbers unless the labels were turned off", () => {
@@ -96,6 +120,40 @@ describe("sanitizeSetup", () => {
     const setup = sanitizeSetup({ sound: "loud" as never });
 
     expect(setup.sound).toBe("on");
+  });
+});
+
+describe("the game presets", () => {
+  const presetOptions = () => GAME_PRESETS.map((preset) => PRESET_OPTIONS[preset]);
+
+  it("offers five lengths of game, from a quick match to a long session", () => {
+    expect(presetOptions()).toEqual([
+      { rounds: 20, roundSeconds: 30 },
+      { rounds: 20, roundSeconds: 45 },
+      { rounds: 30, roundSeconds: 30 },
+      { rounds: 30, roundSeconds: 45 },
+      { rounds: 40, roundSeconds: 45 },
+    ]);
+  });
+
+  it("keeps every preset within the cartridge's limits", () => {
+    expect(presetOptions().map(sanitizeGameOptions)).toEqual(presetOptions());
+  });
+
+  it("knows each preset by its term and its year", () => {
+    expect(presetOptions().map(presetOf)).toEqual(GAME_PRESETS);
+  });
+
+  it("starts a new player on the classic preset", () => {
+    expect(presetOf(DEFAULT_SETUP)).toBe("classic");
+  });
+
+  it("calls a term and a year set by hand custom", () => {
+    expect(presetOf({ rounds: 20, roundSeconds: 60 })).toBe("custom");
+  });
+
+  it("times a game as every year's seconds end to end", () => {
+    expect(presetOptions().map(gameMinutes)).toEqual([10, 15, 15, 22.5, 30]);
   });
 });
 
