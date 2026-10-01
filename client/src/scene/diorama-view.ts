@@ -1,25 +1,14 @@
-import { PixelPoint, type GameSnapshot, type Side } from "@utopia/engine";
+import type { GameSnapshot, PixelPoint, Side } from "@utopia/engine";
 import {
   Color,
   DirectionalLight,
   Fog,
   HemisphereLight,
   PerspectiveCamera,
-  Plane,
-  Raycaster,
   Scene,
-  Vector2,
-  Vector3,
   WebGLRenderer,
 } from "three";
-import {
-  CARD_SIZE,
-  isOnBoard,
-  nearestOnBoard,
-  spriteOverWorld,
-  worldOfSprite,
-  type WorldPoint,
-} from "../board/rom-space.js";
+import { CARD_SIZE, worldOfSprite } from "../board/rom-space.js";
 import type { GameFrame } from "../session/game-session.js";
 import {
   DIORAMA_POSE,
@@ -30,11 +19,13 @@ import {
 } from "./camera-framing.js";
 import { CloudShadows } from "./cloud-shadows.js";
 import { FishRenderer } from "./fish-renderer.js";
+import { FloorPicker, type ScreenPosition } from "./floor-picker.js";
 import { Ground } from "./ground.js";
 import { addIslands } from "./island-renderer.js";
 import { LandUseMap } from "./land-use.js";
 import { SKYLIGHT, SUNLIGHT } from "./lighting.js";
 import { MoverRenderer } from "./mover-renderer.js";
+import { PointerRenderer } from "./pointer-renderer.js";
 import { SeaRenderer } from "./sea-renderer.js";
 import { addSky } from "./sky-renderer.js";
 import { TownRenderer } from "./town-renderer.js";
@@ -44,11 +35,6 @@ import { WeatherRenderer } from "./weather-renderer.js";
 export interface Area {
   readonly width: number;
   readonly height: number;
-}
-
-export interface ScreenPosition {
-  readonly clientX: number;
-  readonly clientY: number;
 }
 
 /** How the player wants to look at the islands, and whose cursor or boat to follow in close. */
@@ -87,8 +73,6 @@ const BOARD_CORNERS: readonly Point3[] = [-10.5, 10.5].flatMap((x) => [
   { x, y: 0.3, z: -6 },
 ]);
 const FRAMING_MARGIN = 0;
-/** Where a pointer's ray is taken to meet the playfield: a little above the sea. */
-const PICKING_PLANE = new Plane(new Vector3(0, 1, 0), -0.05);
 
 interface Renderers {
   readonly shadows: CloudShadows;
@@ -98,6 +82,7 @@ interface Renderers {
   readonly movers: MoverRenderer;
   readonly weather: WeatherRenderer;
   readonly fish: FishRenderer;
+  readonly pointer: PointerRenderer;
 }
 
 /**
@@ -120,13 +105,17 @@ export class DioramaView {
     shot: { target: DIORAMA_POSE.target, distance: 1 },
   };
   private lastDrawn = performance.now();
+  private readonly picker: FloorPicker;
+  /** Where the mouse is on the page while it plays the board. */
+  private mouse: ScreenPosition | "away" = "away";
 
   constructor(private readonly setup: DioramaSetup) {
     this.renderer = new WebGLRenderer({ canvas: setup.canvas, antialias: true });
     this.renderer.setClearColor(new Color(WATER.deep));
     this.scene.background = new Color(WATER.deep);
     this.scene.fog = new Fog(WATER.haze, HAZE.near, HAZE.far);
-    this.renderers = furnish(this.scene);
+    this.renderers = furnish(this.scene, setup.canvas);
+    this.picker = new FloorPicker({ canvas: setup.canvas, camera: this.camera });
     this.resize();
   }
 
@@ -142,7 +131,19 @@ export class DioramaView {
     movers.update(snapshot);
     weather.update({ sprites: snapshot.sprites, seconds });
     fish.update({ sprites: snapshot.sprites, seconds });
+    this.showPointer(snapshot);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  /** The mouse is over the board here: the view shows it on the board itself. */
+  trackPointer(position: ScreenPosition): void {
+    this.mouse = position;
+  }
+
+  /** The mouse has left the board, or no longer plays it: the system pointer shows it again. */
+  losePointer(): void {
+    this.mouse = "away";
+    this.renderers.pointer.putAway();
   }
 
   setPixelRatio(ratio: number): void {
@@ -156,6 +157,7 @@ export class DioramaView {
   }
 
   hide(): void {
+    this.losePointer();
     this.setup.canvas.hidden = true;
   }
 
@@ -218,32 +220,23 @@ export class DioramaView {
 
   /** The sprite point under a pointer, where its ray meets the playfield; "outside" off it. */
   romPointAt(position: ScreenPosition): PixelPoint | "outside" {
-    const hit = this.floorAt(position);
-    if (hit === "sky" || !isOnBoard(hit)) return "outside";
-    return spriteOverWorld(hit);
+    return this.picker.romPointAt(position);
   }
 
   /** The sprite point under a pointer, or at the nearest point on the sea's cards if it is past them. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside" {
-    const hit = this.floorAt(position);
-    return hit === "sky" ? "outside" : spriteOverWorld(nearestOnBoard(hit));
+    return this.picker.nearestRomPoint(position);
   }
 
-  /** Where a pointer's ray meets the floor, or "sky" if it passes over the horizon. */
-  private floorAt(position: ScreenPosition): WorldPoint | "sky" {
-    const frame = this.setup.canvas.getBoundingClientRect();
-    const pointer = new Vector2(
-      ((position.clientX - frame.left) / frame.width) * 2 - 1,
-      -((position.clientY - frame.top) / frame.height) * 2 + 1,
-    );
-    const ray = new Raycaster();
-    ray.setFromCamera(pointer, this.camera);
-    const hit = ray.ray.intersectPlane(PICKING_PLANE, new Vector3());
-    return hit ? { x: hit.x, z: hit.z } : "sky";
+  /** The player's mouse, as their cursor or boat follows it. */
+  private showPointer(snapshot: GameSnapshot): void {
+    const side = this.setup.aim().follow;
+    const { mode } = snapshot.islands[side].pilot;
+    this.renderers.pointer.update({ side, mode, spot: this.picker.spotAt(this.mouse) });
   }
 }
 
-function furnish(scene: Scene): Renderers {
+function furnish(scene: Scene, canvas: HTMLCanvasElement): Renderers {
   const ground = new Ground();
   const shadows = new CloudShadows();
   const landUse = new LandUseMap();
@@ -258,6 +251,7 @@ function furnish(scene: Scene): Renderers {
     movers: new MoverRenderer(scene, ground),
     weather: new WeatherRenderer(scene, ground),
     fish: new FishRenderer(scene),
+    pointer: new PointerRenderer(scene, { ground, canvas }),
   };
 }
 

@@ -7,6 +7,7 @@ import {
   type BoardView,
   type FrameCallbacks,
   type FrameDriver,
+  type PlayerInput,
 } from "../src/app/game-runner.js";
 import { GameStore } from "../src/app/game-store.js";
 import type { GameFrame, GameSession } from "../src/session/game-session.js";
@@ -40,10 +41,25 @@ class RecordingView implements BoardView {
   resize(): void {}
 }
 
+/** The player's controls: whether they are playing the game. */
+class RecordingInput implements PlayerInput {
+  attached = false;
+
+  attach(): void {
+    this.attached = true;
+  }
+
+  detach(): void {
+    this.attached = false;
+  }
+
+  onFrame(): void {}
+}
+
 /** A session that hands over the same frame every time. */
 class StillSession implements GameSession {
   readonly side = "left";
-  readonly pausable = true;
+  readonly pausable: boolean = true;
 
   constructor(private readonly still: GameFrame) {}
 
@@ -58,6 +74,11 @@ class StillSession implements GameSession {
   frame(): GameFrame {
     return this.still;
   }
+}
+
+/** A game on the server, shared with a rival: it carries on whatever one player does. */
+class SharedSession extends StillSession {
+  override readonly pausable: boolean = false;
 }
 
 const MATCH: Match = { mine: "left", names: { left: "ADA", right: "UTOPUS" }, rivalled: true };
@@ -80,16 +101,27 @@ const aPlayingFrame = () => aFrame(1);
 
 function aRunner() {
   const view = new RecordingView();
+  const input = new RecordingInput();
+  const store = new GameStore();
   let frames = new TickedFrames({ onFrame: () => {}, onPixelRatioChange: () => {} });
   const runner = new GameRunner({
-    store: new GameStore(),
+    store,
     view,
-    input: { attach: () => {}, detach: () => {}, onFrame: () => {} },
+    input,
     audio: { hear: () => {} },
     frames: (callbacks) => (frames = new TickedFrames(callbacks)),
     menu: new BuildMenu(),
   });
-  return { runner, view, tick: () => frames.tick(), running: () => frames.running };
+  const paused = () => store.getView().paused;
+  return { runner, view, input, paused, tick: () => frames.tick(), running: () => frames.running };
+}
+
+/** A runner with a game in the browser under way, paused by its player. */
+function aPausedRunner() {
+  const parts = aRunner();
+  parts.runner.play(new StillSession(aPlayingFrame()), MATCH);
+  parts.runner.togglePause();
+  return parts;
 }
 
 describe("GameRunner once the game is over", () => {
@@ -164,5 +196,88 @@ describe("GameRunner while the player looks away", () => {
     runner.lookBack();
 
     expect(running()).toBe(false);
+  });
+});
+
+describe("GameRunner paused by its player", () => {
+  it("draws no frames, so a game in the browser waits", () => {
+    const { running } = aPausedRunner();
+
+    expect(running()).toBe(false);
+  });
+
+  it("lets go of the controls, so no key or click reaches the game", () => {
+    const { input } = aPausedRunner();
+
+    expect(input.attached).toBe(false);
+  });
+
+  it("says so on the screen", () => {
+    const { paused } = aPausedRunner();
+
+    expect(paused()).toBe(true);
+  });
+
+  it("draws the waiting game again when the page changes, as no frames come", () => {
+    const { runner, view } = aPausedRunner();
+
+    runner.refresh();
+
+    expect(view.drawn).toHaveLength(1);
+  });
+
+  it("stays paused when the player looks back", () => {
+    const { runner, running } = aPausedRunner();
+    runner.lookAway();
+
+    runner.lookBack();
+
+    expect(running()).toBe(false);
+  });
+
+  it("plays on, with the controls taken up again, when unpaused", () => {
+    const { runner, running, input, paused } = aPausedRunner();
+
+    runner.togglePause();
+
+    expect([running(), input.attached, paused()]).toEqual([true, true, false]);
+  });
+
+  it("starts the next game unpaused", () => {
+    const { runner, paused } = aPausedRunner();
+    runner.showTitle();
+
+    runner.play(new StillSession(aPlayingFrame()), MATCH);
+
+    expect(paused()).toBe(false);
+  });
+});
+
+describe("GameRunner asked to pause what cannot wait", () => {
+  it("carries a game shared with a rival on", () => {
+    const { runner, running } = aRunner();
+    runner.play(new SharedSession(aPlayingFrame()), MATCH);
+
+    runner.togglePause();
+
+    expect(running()).toBe(true);
+  });
+
+  it("leaves a finished game as it is", () => {
+    const { runner, tick, paused } = aRunner();
+    runner.play(new StillSession(anOverFrame()), MATCH);
+    tick();
+
+    runner.togglePause();
+
+    expect(paused()).toBe(false);
+  });
+
+  it("leaves the title as it is", () => {
+    const { runner, paused } = aRunner();
+
+    runner.togglePause();
+
+    expect(paused()).toBe(false);
   });
 });

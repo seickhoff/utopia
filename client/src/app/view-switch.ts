@@ -10,6 +10,10 @@ export interface ModeView {
   hide(): void;
   romPointAt(position: { clientX: number; clientY: number }): PixelPoint | "outside";
   nearestRomPoint(position: { clientX: number; clientY: number }): PixelPoint | "outside";
+  /** The mouse is over the board here: a view may show it on the board itself. */
+  trackPointer(position: { clientX: number; clientY: number }): void;
+  /** The mouse has left the board, or no longer plays it. */
+  losePointer(): void;
 }
 
 /** The classic screen or the diorama, one at a time: the other draws nothing until switched to. */
@@ -41,5 +45,13 @@ export class ViewSwitch {
 
   nearestRomPoint(position: { clientX: number; clientY: number }): PixelPoint | "outside" {
     return this.views[this.mode].nearestRomPoint(position);
+  }
+
+  trackPointer(position: { clientX: number; clientY: number }): void {
+    this.views[this.mode].trackPointer(position);
+  }
+
+  losePointer(): void {
+    this.views[this.mode].losePointer();
   }
 }

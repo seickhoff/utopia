@@ -24,6 +24,22 @@ export function PlayingScreen(props: ScreenProps) {
       {view.buildMenu.open && <QuickBuild view={view} actions={actions} />}
       {view.hud.message !== "" && <BoardNotice message={view.hud.message} />}
       <OnlineNotice online={view.online} actions={actions} />
+      {view.paused && <PauseNotice actions={actions} />}
+    </div>
+  );
+}
+
+/** Over the board while the game waits for its player. */
+function PauseNotice({ actions }: Pick<ScreenProps, "actions">) {
+  return (
+    <div className="pause-notice" role="alertdialog">
+      <h2>Paused</h2>
+      <div className="online-choices">
+        <button className="view-toggle" onClick={actions.togglePause}>
+          Play on
+          <KeyHint keyName="Esc" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -63,7 +63,7 @@ const SECTIONS: readonly GuideSection[] = [
   {
     title: "With the keys",
     lines: [
-      "Arrows or WASD move · 1–9 choose · Enter builds · 0 or Space takes out or anchors a boat · Esc clears.",
+      "Arrows or WASD move · 1–9 choose · Enter builds · 0 or Space takes out or anchors a boat · Backspace clears · Esc pauses.",
       "Hold T, C or R for both islands' total, census or last year's score · V 3D view · M sound · L labels.",
     ],
     reader: "desk",

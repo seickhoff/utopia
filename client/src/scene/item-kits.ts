@@ -32,3 +32,13 @@ export function cursorFrame(style: KitStyle): Triangles {
     box({ base: at([reach, 0, 0]), size: at([thickness, 0.05, inner]), colour }),
   ]);
 }
+
+/** The mouse while a boat follows it: a cross the size of the cursor, in the governor's colour. */
+export function pointerCross(style: KitStyle): Triangles {
+  const thickness = 0.1;
+  const colour = style.accent;
+  return merge([
+    box({ base: at([0, 0, 0]), size: at([1, 0.05, thickness]), colour }),
+    box({ base: at([0, 0, 0]), size: at([thickness, 0.05, 1]), colour }),
+  ]);
+}

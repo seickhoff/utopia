@@ -102,6 +102,11 @@ export class ClassicView {
     return this.romPointAt(position);
   }
 
+  /** The classic screen leaves the mouse to the system pointer, as the cartridge had none. */
+  trackPointer(): void {}
+
+  losePointer(): void {}
+
   show(): void {
     this.setup.canvas.hidden = false;
     this.borderShown = "unpainted";

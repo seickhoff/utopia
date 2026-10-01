@@ -1,12 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { landfill } from "../src/scene/item-kits.js";
-import { box, patch, placed, rgb } from "../src/scene/shapes.js";
+import { landfill, pointerCross } from "../src/scene/item-kits.js";
+import { box, patch, placed, rgb, type Triangles } from "../src/scene/shapes.js";
+
+/** How far a model reaches along one axis: 0 across, 2 deep. */
+function reach(model: Triangles, axis: number): number {
+  const values = model.positions.filter((_, index) => index % 3 === axis);
+  return Math.max(...values) - Math.min(...values);
+}
 
 describe("landfill", () => {
   it("fills in a little wider than the footprint it goes under", () => {
-    const xs = landfill({ width: 0.2, depth: 0.1 }).positions.filter((_, index) => index % 3 === 0);
+    expect(reach(landfill({ width: 0.2, depth: 0.1 }), 0)).toBeCloseTo(0.3, 9);
+  });
+});
 
-    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(0.3, 9);
+describe("pointerCross", () => {
+  const GREEN = rgb("#43c275");
+
+  it("reaches across a whole square both ways, as the cursor does", () => {
+    const cross = pointerCross({ accent: GREEN });
+
+    expect([reach(cross, 0), reach(cross, 2)]).toEqual([1, 1]);
+  });
+
+  it("is in the governor's colour, as the cursor is", () => {
+    const { colors } = pointerCross({ accent: GREEN });
+
+    expect(new Set(colors)).toEqual(new Set(GREEN));
   });
 });
 

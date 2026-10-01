@@ -10,6 +10,10 @@ export interface BoardPicker {
   romPointAt(position: ScreenPosition): PixelPoint | "outside";
   /** The same, but a pointer just past the playfield's edge counts as at the nearest point on it. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside";
+  /** The mouse is over the board here: the view may show it on the board itself. */
+  trackPointer(position: ScreenPosition): void;
+  /** The mouse has left the board, or no longer plays it. */
+  losePointer(): void;
 }
 
 export interface PointerSetup {
@@ -40,7 +44,7 @@ interface PointerStyle {
 export class PointerControls {
   private readonly mouse: PointerStyle = {
     down: (event) => this.press(event),
-    move: (event) => this.lead(event),
+    move: (event) => this.hover(event),
     up: () => {},
     cancel: () => {},
   };
@@ -75,6 +79,7 @@ export class PointerControls {
     surface.removeEventListener("pointerleave", this.onLeave);
     surface.removeEventListener("contextmenu", this.onContextMenu);
     surface.removeEventListener("wheel", this.onWheel);
+    this.setup.picker.losePointer();
   }
 
   private styleOf(event: PointerEvent): PointerStyle {
@@ -88,6 +93,12 @@ export class PointerControls {
 
   private press(event: PointerEvent): void {
     if (event.button === MAIN_BUTTON) this.act(event);
+  }
+
+  /** The mouse over the board: the view shows where it is, and the cursor or boat follows it. */
+  private hover(event: PointerEvent): void {
+    this.setup.picker.trackPointer(event);
+    this.lead(event);
   }
 
   /** A boat steered past the edge of the sea heads for the edge, rather than stopping dead. */
@@ -104,6 +115,7 @@ export class PointerControls {
   }
 
   private readonly onLeave = (): void => {
+    this.setup.picker.losePointer();
     this.setup.steerer.release();
   };
 

@@ -74,8 +74,17 @@ body[data-screen="title"] #stage {
   inset: 0;
   width: 100%;
   height: 100%;
-  cursor: crosshair;
+  /* Bold and outlined, so the pointer is found at a glance over sea, land and cloud alike.
+     Kept at 32px: Chrome drops a larger cursor near the window's edge. */
+  cursor:
+    url("./pointer.svg") 16 16,
+    crosshair;
   touch-action: none;
+}
+
+/* Over the board the 3D view shows the mouse itself: the cursor, or a cross where a boat heads */
+#scene[data-pointer="drawn"] {
+  cursor: none;
 }
 
 #scene[hidden],
@@ -541,9 +550,10 @@ body[data-screen="title"] #stage {
   }
 }
 
-/* Over a held online game: a lost connection, a rival away, or a rival gone */
+/* Over a held game: paused by its player, or online a lost connection, a rival away or gone */
 
-.online-notice {
+.online-notice,
+.pause-notice {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -561,12 +571,14 @@ body[data-screen="title"] #stage {
   pointer-events: auto;
 }
 
-.online-notice h2 {
+.online-notice h2,
+.pause-notice h2 {
   margin: 0;
   font-size: 18px;
 }
 
-.online-notice p {
+.online-notice p,
+.pause-notice p {
   margin: 0;
   color: var(--ink-dim);
 }

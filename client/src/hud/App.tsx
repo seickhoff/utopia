@@ -19,6 +19,8 @@ export interface GameActions {
   carryOn(choice: "computer" | "lobby"): void;
   /** Leaves the game under way, online or not, for the title screen. */
   leaveGame(): void;
+  /** Holds a game in the browser, or plays it on; a game shared with a rival carries on. */
+  togglePause(): void;
   changeSetup(change: Partial<GameSetup>): void;
   backToTitle(): void;
   pressKey(key: KeypadKey): void;

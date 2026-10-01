@@ -9,7 +9,7 @@ The rules follow the cartridge's own code, decoded from an annotated disassembly
 - **Solo**, against the computer at three strengths, or with no rival, as in the original one-player game.
 - **Online**, against a friend: host a game, then share its four-letter code or link. The server runs the game, a dropped connection pauses it until the player is back, and if a rival leaves, the computer can take over their island.
 - **Two views**: a 3D diorama, or the classic Intellivision screen with its keypad overlay, labels and year-by-year log (press **V** to switch).
-- Mouse or keyboard: click your land for the build ring, or use **1–9**, **Enter**, the arrows, **0** for boats and **Esc** to clear.
+- Mouse or keyboard: click your land for the build ring, or use **1–9**, **Enter**, the arrows, **0** for boats, **Backspace** to clear and **Esc** to pause.
 
 ## Running locally
 

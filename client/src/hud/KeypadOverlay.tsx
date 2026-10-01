@@ -37,7 +37,7 @@ function Keypad(props: { hud: HudViewModel; onKey: (key: KeypadKey) => void }) {
       {hud.palette.map((item) => (
         <ItemKey key={item.key} item={item} onKey={onKey} />
       ))}
-      <WordKey label="CLEAR" hint="Backspace or Esc" onPress={() => onKey("clear")} />
+      <WordKey label="CLEAR" hint="Backspace" onPress={() => onKey("clear")} />
       <CursorKey onPress={() => onKey(0)} />
       <WordKey label="ENTER" hint="Return or Enter" onPress={() => onKey("enter")} />
     </div>

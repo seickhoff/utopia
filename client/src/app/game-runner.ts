@@ -52,10 +52,17 @@ interface Running {
   redraw(): void;
   /** Takes up the frames again after the player has looked away, if the game is still on. */
   wake(): void;
+  togglePause(): void;
 }
 
 /** Special Case: nothing being played. */
-const IDLE: Running = { onFrame: () => {}, rename: () => {}, redraw: () => {}, wake: () => {} };
+const IDLE: Running = {
+  onFrame: () => {},
+  rename: () => {},
+  redraw: () => {},
+  wake: () => {},
+  togglePause: () => {},
+};
 
 /** Special Case: who plays before any game has begun. */
 const NO_MATCH: Match = { mine: "left", names: { left: "", right: "" }, rivalled: false };
@@ -75,21 +82,18 @@ export class GameRunner {
 
   showTitle(): void {
     this.stop();
-    this.setup.store.update({ screen: "title" });
+    this.setup.store.update({ screen: "title", paused: false });
   }
 
   play(session: GameSession, match: Match): void {
     this.current = match;
     const hud = new GameHud({ store: this.setup.store, match, menu: this.setup.menu });
-    this.running = {
-      onFrame: (nowMs) => this.playFrame({ session, hud, nowMs }),
-      rename: (names) => hud.rename(names),
-      redraw: () => {},
-      wake: () => this.frames.start(),
-    };
-    this.setup.input.attach(session);
-    this.setup.store.update({ screen: "playing" });
-    this.frames.start();
+    this.carryOn({ session, hud });
+  }
+
+  /** Holds a game in the browser, or plays it on; a game shared with a rival carries on regardless. */
+  togglePause(): void {
+    this.running.togglePause();
   }
 
   /** The governors' names change mid-game: the computer has taken over a rival's island. */
@@ -124,6 +128,38 @@ export class GameRunner {
     this.running.redraw();
   }
 
+  /** Plays a game, from its start or on from a pause. */
+  private carryOn(game: GameOn): void {
+    this.running = {
+      onFrame: (nowMs) => this.playFrame({ ...game, nowMs }),
+      rename: (names) => game.hud.rename(names),
+      redraw: () => {},
+      wake: () => this.frames.start(),
+      togglePause: () => this.pause(game),
+    };
+    this.setup.input.attach(game.session);
+    this.setup.store.update({ screen: "playing", paused: false });
+    this.frames.start();
+  }
+
+  /**
+   * Holds the game where it is: no frames, and the controls let go so nothing reaches it. Looking
+   * away and back again does not end the pause; only the player does.
+   */
+  private pause(game: GameOn): void {
+    if (!game.session.pausable) return;
+    this.frames.stop();
+    this.setup.input.detach();
+    this.running = {
+      onFrame: () => {},
+      rename: (names) => game.hud.rename(names),
+      redraw: () => this.setup.view.draw(game.session.frame()),
+      wake: () => {},
+      togglePause: () => this.carryOn(game),
+    };
+    this.setup.store.update({ paused: true });
+  }
+
   private playFrame(moment: PlayMoment): void {
     moment.session.advanceTo(moment.nowMs);
     const frame = moment.session.frame();
@@ -149,8 +185,12 @@ export class GameRunner {
   }
 }
 
-interface PlayMoment {
+/** A game under way, and the HUD showing it. */
+interface GameOn {
   readonly session: GameSession;
   readonly hud: GameHud;
+}
+
+interface PlayMoment extends GameOn {
   readonly nowMs: number;
 }

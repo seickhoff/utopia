@@ -83,7 +83,6 @@ const OTHER_KEYPAD_CODES: Readonly<Record<string, KeypadKey>> = {
   NumpadEnter: "enter",
   Backspace: "clear",
   Delete: "clear",
-  Escape: "clear",
   NumpadDecimal: "clear",
 };
 

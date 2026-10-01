@@ -8,7 +8,7 @@ import type { Arrow, ControllerHands } from "./key-map.js";
 
 /**
  * The keys while the quick-build menu is open, and the menu's own buttons: an item's key buys it
- * at once on the offered square, Escape (or Clear, Enter, 0) just closes the menu, and an arrow
+ * at once on the offered square, Clear (or Enter, 0) just closes the menu, and an arrow
  * closes it as the cursor moves off. While the menu is closed, every key goes on to the hand
  * controller untouched.
  */

@@ -240,10 +240,10 @@ describe("BuildMenuControls", () => {
     ]);
   });
 
-  it("closes the menu on Escape without the cartridge's RAZZ", () => {
+  it("closes the menu on Clear without the cartridge's RAZZ", () => {
     const game = withMenuOpen();
 
-    commandForKey({ code: "Escape", shiftKey: false }).press(game.keys);
+    commandForKey({ code: "Backspace", shiftKey: false }).press(game.keys);
     game.play(1 / 60);
 
     expect([game.menu.isOpen(), game.razzes()]).toEqual([false, []]);

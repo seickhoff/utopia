@@ -130,6 +130,8 @@ export interface BuildMenuViewModel {
 
 export interface GameView {
   readonly screen: Screen;
+  /** A game in the browser held by its player, waiting until they play on. */
+  readonly paused: boolean;
   readonly setup: SetupViewModel;
   readonly hud: HudViewModel;
   readonly yearEnd: YearEndViewModel;
@@ -171,6 +173,7 @@ const EMPTY_HUD: HudViewModel = {
 
 export const INITIAL_VIEW: GameView = {
   screen: "title",
+  paused: false,
   setup: DEFAULT_SETUP,
   hud: EMPTY_HUD,
   yearEnd: NO_YEAR_END,

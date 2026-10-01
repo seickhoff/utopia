@@ -22,11 +22,15 @@ describe("commandForKey", () => {
     expect(stroke("Enter")).toEqual({ kind: "keypad", key: "enter" });
   });
 
-  it("clears with Backspace or Escape", () => {
-    expect([stroke("Backspace"), stroke("Escape")]).toEqual([
+  it("clears with Backspace or Delete", () => {
+    expect([stroke("Backspace"), stroke("Delete")]).toEqual([
       { kind: "keypad", key: "clear" },
       { kind: "keypad", key: "clear" },
     ]);
+  });
+
+  it("leaves Escape to pause the game", () => {
+    expect(stroke("Escape")).toBe(NO_COMMAND);
   });
 
   it("takes out or anchors a boat with 0 or the space bar", () => {

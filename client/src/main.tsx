@@ -86,12 +86,9 @@ function buildParts(): Parts {
   return { store, setups, ...hands, runner, views, speaker, online };
 }
 
-interface RunnerParts {
-  readonly store: GameStore;
-  readonly views: ViewSwitch;
+/** The parts the runner shares with the rest of the page, and the controls it plugs into games. */
+interface RunnerParts extends Pick<Parts, "store" | "views" | "speaker" | "menu"> {
   readonly input: PlayerControls;
-  readonly speaker: WebAudioSpeaker;
-  readonly menu: BuildMenu;
 }
 
 function buildRunner(parts: RunnerParts): GameRunner {
@@ -175,6 +172,7 @@ function playActions(parts: Parts) {
   return {
     play: () => playSolo(parts),
     leaveGame: () => parts.online.leave(),
+    togglePause: () => parts.runner.togglePause(),
     backToTitle: () => parts.online.leave(),
     pressKey: (key: KeypadKey) => controller.pressKeypad(key),
     buildHere: (key: number) => parts.menuKeys.buy(key),
@@ -222,6 +220,7 @@ const SHORTCUTS: Readonly<Record<string, (actions: GameActions) => void>> = {
   KeyV: (actions) => actions.toggleView(),
   KeyM: (actions) => actions.toggleSound(),
   KeyL: (actions) => actions.toggleLabels(),
+  Escape: (actions) => actions.togglePause(),
 };
 
 /** The page follows the store: which screen shows, and which view draws the islands. */
