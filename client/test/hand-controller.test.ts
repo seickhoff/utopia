@@ -39,6 +39,15 @@ function aController() {
 const typesOf = (events: readonly GameEvent[]) => events.map((event) => event.type);
 
 describe("HandController", () => {
+  it("tells which way its disc is held, for whatever steers by it", () => {
+    const { controller } = aController();
+    const EAST = 4;
+
+    controller.steer(EAST);
+
+    expect(controller.heading()).toBe(EAST);
+  });
+
   it("chooses the item a digit stands for", () => {
     const { press, snapshot } = aController();
 

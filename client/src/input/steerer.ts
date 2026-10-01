@@ -1,17 +1,21 @@
 import {
   DISC_RELEASED,
+  Navigator,
   PixelPoint,
   type DiscReading,
   squareAnchor,
   squareUnder,
-  steerToward,
+  steerAlong,
+  steerWithin,
+  watersOf,
   type GameSnapshot,
   type Side,
   type Square,
+  type Voyage,
+  type Waters,
 } from "@utopia/engine";
 import type { GameFrame } from "../session/game-session.js";
 import type { BuildMenu } from "../app/build-menu.js";
-import { seaRoute } from "../board/sea-route.js";
 import { buysAtOnce, clickAction, type ClickAction } from "./click-action.js";
 import type { HandController } from "./hand-controller.js";
 
@@ -40,6 +44,7 @@ export class Steerer {
   private laidOn: Square | "nowhere" = "nowhere";
   /** A click waits a frame, so it is judged against a snapshot that has caught up with it. */
   private pendingClick: BoardClick | "none" = "none";
+  private readonly navigator = new Navigator();
 
   constructor(
     private readonly controller: HandController,
@@ -85,7 +90,7 @@ export class Steerer {
       this.course = "adrift";
       return;
     }
-    this.steer(this.course);
+    this.steer({ course: this.course, snapshot: frame.current });
   }
 
   private settleClick(): void {
@@ -109,21 +114,38 @@ export class Steerer {
   }
 
   /**
-   * Sails square by square along the open-water route to the course's square, round any island in
-   * the way. The boat has arrived once it is in that square (it cannot always reach the middle:
-   * the sand bars stop it short of land a whole square ahead), and anchors there if asked to.
+   * Sails the sand bars' shortest way to the course's square, or the open sea nearest it, holding
+   * each run's heading. Once over the pointer's own square, a boat following it comes on right
+   * under it (as far as the sand bars and the edge of the sea allow); one sent to act there, or
+   * stopped by land the pointer is over, has arrived, and anchors if asked.
    */
-  private steer(course: Course): void {
+  private steer(steering: { course: Course; snapshot: GameSnapshot }): void {
+    const { course, snapshot } = steering;
+    const waters = watersOf(snapshot.board.squares);
     const here = squareUnder(this.pilotPoint());
-    const next = this.nextSquare({ here, goal: squareUnder(course.point) });
-    if (next === "arrived") return this.arrive(course);
-    this.press(steerToward(this.pilotPoint(), squareAnchor(next)));
+    const pointed = squareUnder(course.point);
+    const goal = this.navigator.landfall({ here, goal: pointed, waters });
+    if (here !== goal) return this.sail({ here, goal, waters });
+    if (course.then === "act" || goal !== pointed) return this.arrive(course);
+    this.comeUnder({ course, shore: waters });
   }
 
-  private nextSquare(leg: { here: Square; goal: Square }): Square | "arrived" {
-    if (this.latest === "unseen" || leg.here === leg.goal) return "arrived";
-    const [next] = seaRoute({ squares: this.latest.board.squares, from: leg.here, to: leg.goal });
-    return next ?? "arrived";
+  private sail(voyage: Voyage): void {
+    this.navigator.plot(voyage);
+    const leg = {
+      passage: this.navigator.leg(),
+      shore: voyage.waters,
+      held: this.controller.heading(),
+    };
+    this.press(steerAlong(this.pilotPoint(), leg));
+  }
+
+  /** Brings the boat right under the pointer, in the square both are over. */
+  private comeUnder(mooring: { course: Course; shore: Waters }): void {
+    const { course, shore } = mooring;
+    const heading = steerWithin(this.pilotPoint(), { target: course.point, shore });
+    if (heading === DISC_RELEASED) return this.arrive(course);
+    this.press(heading);
   }
 
   private arrive(course: Course): void {

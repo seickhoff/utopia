@@ -94,6 +94,10 @@ export {
   type SpriteShape,
 } from "./collision/sprite-shape.js";
 export type { DrifterKind } from "./sea/drifter.js";
+export { SeaChart, type Passage, type Waters } from "./sea/sea-chart.js";
+export { Navigator, type Voyage } from "./sea/navigator.js";
+export { steerAlong, steerWithin, type Leg, type Mooring } from "./sea/course.js";
+export { watersOf } from "./game/waters.js";
 export { isWeather, type WeatherKind } from "./sea/weather-kind.js";
 export type { SeaRules } from "./game/game-rules.js";
 export type { GamePhase } from "./game/stage.js";

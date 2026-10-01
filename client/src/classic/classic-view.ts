@@ -1,7 +1,8 @@
-import { PixelPoint, type Side } from "@utopia/engine";
+import type { PixelPoint, Side } from "@utopia/engine";
 import type { GameFrame } from "../session/game-session.js";
 import { ClassicPixels, FRAME_HEIGHT, FRAME_WIDTH, composeFrame } from "./pixel-frame.js";
 import { pixelScale, shownSize, type Area } from "./pixel-scale.js";
+import { nearestSpritePointAt, spritePointAt, type ScreenPixel } from "./pointing.js";
 import {
   BORDER,
   SCREEN_HEIGHT,
@@ -17,11 +18,6 @@ export interface ScreenPosition {
   readonly clientX: number;
   readonly clientY: number;
 }
-
-/** Each background pixel is drawn as two scanlines. */
-const SCANLINES_PER_PIXEL = 2;
-/** Sprite coordinates start 8 pixels up and left of the playfield; a sprite's centre is 4 in. */
-const TO_SPRITE_CORNER = 8 - 4;
 
 /** Whether the border names the screen's numbers and says whose island is whose. */
 type LabelSetting = "on" | "off";
@@ -81,25 +77,22 @@ export class ClassicView {
     this.context.putImageData(image, 0, 0);
   }
 
-  /**
-   * The sprite point a pointer at this screen position stands for, placed so an 8x8 sprite there
-   * is centred under the pointer; "outside" off the playfield, the border included.
-   */
+  /** The sprite point a pointer here stands for; "outside" off the playfield, the border included. */
   romPointAt(position: ScreenPosition): PixelPoint | "outside" {
-    const screen = this.setup.canvas.getBoundingClientRect();
-    const across = ((position.clientX - screen.left) / screen.width) * SCREEN_WIDTH;
-    const down = ((position.clientY - screen.top) / screen.height) * SCREEN_HEIGHT;
-    const x = across - BORDER.across;
-    const y = (down - BORDER.down) / SCANLINES_PER_PIXEL;
-    if (x < 0 || y < 0 || x >= FRAME_WIDTH || y >= FRAME_HEIGHT / SCANLINES_PER_PIXEL) {
-      return "outside";
-    }
-    return new PixelPoint(Math.floor(x) + TO_SPRITE_CORNER, Math.floor(y) + TO_SPRITE_CORNER);
+    return spritePointAt(this.screenPixelAt(position));
   }
 
-  /** The classic screen is exactly the playfield, so there is no edge to be just past. */
+  /** The same, but a pointer over the border, blue as the sea, stands for the sea's nearest point. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside" {
-    return this.romPointAt(position);
+    return nearestSpritePointAt(this.screenPixelAt(position));
+  }
+
+  private screenPixelAt(position: ScreenPosition): ScreenPixel {
+    const screen = this.setup.canvas.getBoundingClientRect();
+    return {
+      across: ((position.clientX - screen.left) / screen.width) * SCREEN_WIDTH,
+      down: ((position.clientY - screen.top) / screen.height) * SCREEN_HEIGHT,
+    };
   }
 
   /** The classic screen leaves the mouse to the system pointer, as the cartridge had none. */

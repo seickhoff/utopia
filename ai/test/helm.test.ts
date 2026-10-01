@@ -1,6 +1,5 @@
-import { DISC_RELEASED, PixelPoint, Square, squareAnchor } from "@utopia/engine";
+import { DISC_RELEASED, Navigator, PixelPoint, Square, squareAnchor } from "@utopia/engine";
 import { describe, expect, it } from "vitest";
-import { ChartRoom } from "../src/chart-room.js";
 import { Hand } from "../src/hand.js";
 import { sailToward } from "../src/helm.js";
 import { aPosition } from "./support/position.js";
@@ -16,7 +15,7 @@ function aHelmAt(pilot: { x: number; y: number }) {
   const view = aPosition()
     .withPilot("left", { mode: "sailing", aboard: "fishingBoat", ...pilot })
     .view("left");
-  return { helm: { view, hand, charts: new ChartRoom() }, controls };
+  return { helm: { view, hand, navigator: new Navigator() }, controls };
 }
 
 describe("the helm", () => {
@@ -37,5 +36,14 @@ describe("the helm", () => {
     );
 
     expect(controls.discReadings().at(-1)).toBe(EAST);
+  });
+
+  it("holds its heading a pixel or two off its line, rather than swing at each square", () => {
+    const anchor = squareAnchor(Square.at(9, 2));
+    const { helm } = aHelmAt({ x: anchor.x + 2, y: anchor.y - 2 });
+
+    sailToward(helm, squareAnchor(Square.at(9, 8)));
+
+    expect(helm.hand.heading()).toBe(EAST);
   });
 });

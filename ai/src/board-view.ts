@@ -2,12 +2,14 @@ import {
   GRID_COLUMNS,
   NOBODY,
   Square,
+  watersOf,
   type BoatKind,
   type Holder,
   type ItemKind,
   type Side,
   type SquareContent,
   type SquareSnapshot,
+  type Waters,
 } from "@utopia/engine";
 
 /** The snapshot lists only squares that hold something; every other square is empty sea. */
@@ -34,9 +36,11 @@ export interface Holding {
 /** The board as a snapshot shows it, square by square. */
 export class BoardView {
   private readonly held: ReadonlyMap<number, SquareContent>;
+  private readonly waters: Waters;
 
   constructor(squares: readonly SquareSnapshot[]) {
     this.held = new Map(squares.map((square) => [square.row * GRID_COLUMNS + square.col, square]));
+    this.waters = watersOf(squares);
   }
 
   contentAt(square: Square): SquareContent {
@@ -51,14 +55,12 @@ export class BoardView {
 
   /** Boats sail over anchored boats, but never onto land or a boat going down. */
   isNavigable(square: Square): boolean {
-    const { terrain, occupant } = this.contentAt(square);
-    return square.isSea() && terrain === "sea" && occupant !== "wreck";
+    return this.waters.isNavigable(square);
   }
 
   /** What the sand bars turn a boat back from: land, and a boat going down. */
   isShore(square: Square): boolean {
-    const { terrain, occupant } = this.contentAt(square);
-    return square.isOnGrid() && (terrain === "land" || occupant === "wreck");
+    return this.waters.isShore(square);
   }
 
   isLandOf(holding: Holding): boolean {

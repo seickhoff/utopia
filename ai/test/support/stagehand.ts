@@ -1,5 +1,4 @@
-import { DEFAULT_RULES, FRAMES_PER_SECOND, type Game, type Side } from "@utopia/engine";
-import { ChartRoom } from "../../src/chart-room.js";
+import { DEFAULT_RULES, FRAMES_PER_SECOND, Navigator, type Game, type Side } from "@utopia/engine";
 import type { Errand } from "../../src/errand.js";
 import { Hand } from "../../src/hand.js";
 import { IslandView } from "../../src/island-view.js";
@@ -12,7 +11,7 @@ const FRAME_SECONDS = 1 / FRAMES_PER_SECOND;
 export class Stagehand {
   readonly controls: RecordingControls;
   private readonly hand = new Hand();
-  private readonly charts = new ChartRoom();
+  private readonly navigator = new Navigator();
 
   constructor(private readonly stage: { readonly game: Game; readonly side: Side }) {
     const { game, side } = stage;
@@ -29,7 +28,7 @@ export class Stagehand {
       errand.carryOn({
         view: this.view(),
         hand: this.hand,
-        charts: this.charts,
+        navigator: this.navigator,
         seconds: FRAME_SECONDS,
       });
       this.stage.game.advance(FRAME_SECONDS);
@@ -39,7 +38,12 @@ export class Stagehand {
 
   /** Acts out one step, once. */
   actOut(step: Step): this {
-    step.act({ view: this.view(), hand: this.hand, charts: this.charts, seconds: FRAME_SECONDS });
+    step.act({
+      view: this.view(),
+      hand: this.hand,
+      navigator: this.navigator,
+      seconds: FRAME_SECONDS,
+    });
     return this;
   }
 

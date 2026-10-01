@@ -54,4 +54,29 @@ describe("MoverRenderer", () => {
   it("keeps the cursor solid", () => {
     expect(opacities(aStartedGame())).toEqual([1, 1]);
   });
+
+  it("raises no wake on a boat its disc presses still against the edge of the sea", () => {
+    const scene = new Scene();
+    const renderer = new MoverRenderer(scene, FLAT);
+    const pinned = pressedWest(bothSailing(aStartedGame()));
+
+    for (let frame = 0; frame < 60; frame += 1) renderer.update(pinned);
+
+    expect(visibleWakes(scene)).toEqual([]);
+  });
 });
+
+/** Both boats' discs pressed west, though neither moves. */
+function pressedWest(snapshot: GameSnapshot): GameSnapshot {
+  const { left, right } = snapshot.islands;
+  const west = (island: IslandSnapshot) => ({ ...island, pilot: { ...island.pilot, vx: -10 } });
+  return { ...snapshot, islands: { left: west(left), right: west(right) } };
+}
+
+/** The wakes trailing the boats that show. */
+function visibleWakes(scene: Scene): Mesh[] {
+  return scene.children
+    .filter((child): child is Mesh => child instanceof Mesh && child.visible)
+    .flatMap((hull) => hull.children)
+    .filter((wake): wake is Mesh => wake instanceof Mesh && wake.visible);
+}

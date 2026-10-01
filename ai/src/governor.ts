@@ -1,6 +1,11 @@
-import type { GameRules, GameSnapshot, RandomSource, Side } from "@utopia/engine";
+import {
+  Navigator,
+  type GameRules,
+  type GameSnapshot,
+  type RandomSource,
+  type Side,
+} from "@utopia/engine";
 import { Agenda } from "./agenda.js";
-import { ChartRoom } from "./chart-room.js";
 import { PLAYING_STRENGTHS, type DifficultyName } from "./difficulty.js";
 import { Errand } from "./errand.js";
 import { Hand } from "./hand.js";
@@ -32,7 +37,7 @@ export class Governor {
   private readonly agenda: Agenda;
   private readonly pace: Pace;
   private readonly hand = new Hand();
-  private readonly charts = new ChartRoom();
+  private readonly navigator = new Navigator();
   private intent: Intent = IDLE;
   private errand = Errand.none();
 
@@ -49,7 +54,12 @@ export class Governor {
     this.agenda.watch(view);
     if (!view.isPlaying()) return this.standBy();
     if (this.errand.isOver()) this.takeUpNextIntent(view);
-    this.errand.carryOn({ view, hand: this.hand, charts: this.charts, seconds: turn.seconds });
+    this.errand.carryOn({
+      view,
+      hand: this.hand,
+      navigator: this.navigator,
+      seconds: turn.seconds,
+    });
   }
 
   /** The keypad is dead outside a turn, so the governor lets go and starts afresh next turn. */

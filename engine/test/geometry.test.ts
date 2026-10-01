@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DISC_RELEASED, discVelocity, steerToward } from "../src/geometry/disc.js";
+import { DISC_RELEASED, discSense, discVelocity, steerToward } from "../src/geometry/disc.js";
 import { PixelPoint, squareAnchor, squareUnder } from "../src/geometry/pixel-point.js";
 import { NEIGHBOUR_OFFSETS, Square } from "../src/geometry/square.js";
 
@@ -54,6 +54,18 @@ describe("discVelocity", () => {
 
   it("stops when the disc is released", () => {
     expect(discVelocity(DISC_RELEASED, 15)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("discSense", () => {
+  it("drives along one axis when the disc points straight, and both when it slants", () => {
+    const EAST = 4;
+    const EAST_SOUTH_EAST = 5;
+
+    expect([discSense(EAST), discSense(EAST_SOUTH_EAST)]).toEqual([
+      { x: 1, y: 0 },
+      { x: 1, y: 1 },
+    ]);
   });
 });
 

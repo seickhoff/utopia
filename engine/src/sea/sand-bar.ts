@@ -39,7 +39,7 @@ function isShore(shore: Shore, ahead: Square): boolean {
 }
 
 /** Land, whatever stands on it, and a boat going down; anchored boats can be sailed past. */
-function blocksVessels(content: SquareContent): boolean {
+export function blocksVessels(content: SquareContent): boolean {
   return content.terrain === "land" || content.occupant === "wreck";
 }
 

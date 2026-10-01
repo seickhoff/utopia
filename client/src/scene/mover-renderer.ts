@@ -14,6 +14,7 @@ import {
   type Scene,
 } from "three";
 import { CARD_SIZE, worldOfSprite, type WorldPoint } from "../board/rom-space.js";
+import { BoatTrack } from "./boat-track.js";
 import { trianglesGeometry } from "./geometry.js";
 import { landAt, type GroundReading } from "./ground-fit.js";
 import { fleetUnderWay, fleetWakes, type FleetKind } from "./fleets.js";
@@ -47,10 +48,11 @@ const SINK_PER_FRAME = 0.04;
 const PIRATE_STYLE: KitStyle = { accent: rgb("#2e2a33") };
 const MAX_PIRATES = 2;
 
-/** A fleet's boats, and the wake they leave, which shows only while they are under way. */
+/** A fleet's boats, the wake they leave while under way, and the track they have kept. */
 interface FleetMeshes {
   readonly hull: Mesh;
   readonly wake: Mesh;
+  readonly track: BoatTrack;
 }
 
 interface PilotMeshes {
@@ -107,13 +109,16 @@ export class MoverRenderer {
     const centre = worldOfSprite(pilot, CARD_SIZE);
     meshes.cursor.visible = !over && pilot.mode === "cursor";
     meshes.ring.visible = !over && pilot.mode === "sailing";
-    meshes.ring.position.set(centre.x, RING_LIFT, centre.z);
     meshes.boats.fishingBoat.hull.visible =
       !over && pilot.aboard === "fishingBoat" && pilot.mode !== "cursor";
     meshes.boats.ptBoat.hull.visible =
       !over && pilot.aboard === "ptBoat" && pilot.mode !== "cursor";
+    loseSightOfHidden([meshes.boats.fishingBoat, meshes.boats.ptBoat]);
     if (meshes.cursor.visible) this.placeCursor(meshes.cursor, centre);
-    if (pilot.aboard !== "none") steer(meshes.boats[pilot.aboard], { centre, sprite: pilot });
+    if (pilot.aboard === "none") return;
+    const boat = meshes.boats[pilot.aboard];
+    steer(boat, { centre, sprite: pilot });
+    meshes.ring.position.set(boat.track.x(), RING_LIFT, boat.track.z());
   }
 
   /** Lays the cursor level over the highest land in its square, so no slope hides a side of it. */
@@ -161,7 +166,12 @@ function fleetMeshes(build: FleetBuild): FleetMeshes {
   const wake = new Mesh(trianglesGeometry(fleetWakes(kind)), build.materials.wake);
   hull.add(wake);
   addHidden(build.scene, { mesh: hull, order: 0 });
-  return { hull, wake };
+  return { hull, wake, track: new BoatTrack() };
+}
+
+/** A fleet out of sight is drawn wherever it is next seen, not eased there from where it was. */
+function loseSightOfHidden(fleets: readonly FleetMeshes[]): void {
+  fleets.filter((fleet) => !fleet.hull.visible).forEach((fleet) => fleet.track.lose());
 }
 
 /** The foam behind a boat: white, faint, and never hiding the water under it. */
@@ -205,6 +215,7 @@ function addHidden(scene: Scene, adding: { mesh: Mesh; order: number }): Mesh {
 
 function showPirate(fleet: FleetMeshes, pirate: SpriteSnapshot | undefined): void {
   fleet.hull.visible = pirate !== undefined;
+  loseSightOfHidden([fleet]);
   if (pirate === undefined) return;
   steer(fleet, { centre: worldOfSprite(pirate, PIRATE_SIZE), sprite: pirate });
 }
@@ -220,20 +231,20 @@ interface Voyage {
 }
 
 /**
- * Puts a fleet where its sprite is and swings it round to its heading, its wake showing while it
- * is under way; a fleet going down sinks lower with every frame of the cartridge's animation.
+ * Puts a fleet where its track has it and swings it round to the way it is going, its wake showing
+ * while it is under way; a fleet going down sinks lower with every frame of the cartridge's
+ * animation.
  */
 function steer(fleet: FleetMeshes, voyage: Voyage): void {
   const { centre, sprite } = voyage;
-  const { hull } = fleet;
+  const { hull, track } = fleet;
   const sinking = sprite.look === "sinkingBoat" || sprite.look === "sinkingPirate";
-  const underWay = !sinking && (sprite.vx !== 0 || sprite.vy !== 0);
-  hull.position.set(centre.x, sinking ? -SINK_PER_FRAME * sprite.frame : 0, centre.z);
+  track.follow({ centre, velocity: sprite });
+  const underWay = !sinking && track.isUnderWay();
+  hull.position.set(track.x(), sinking ? -SINK_PER_FRAME * sprite.frame : 0, track.z());
   hull.rotation.z = sinking ? 0.08 * sprite.frame : 0;
   fleet.wake.visible = underWay;
-  if (underWay)
-    hull.rotation.y +=
-      shortestTurn(hull.rotation.y, -Math.atan2(sprite.vy, sprite.vx)) * HEADING_EASE;
+  if (underWay) hull.rotation.y += shortestTurn(hull.rotation.y, track.bearing()) * HEADING_EASE;
 }
 
 /** The smaller way round from one heading to another, in radians. */

@@ -75,6 +75,11 @@ export class HandController implements ControllerHands {
     return this.arrows.size > 0;
   }
 
+  /** Which way the disc is held, by the arrows or by whatever steers for the player. */
+  heading(): DiscReading {
+    return this.disc;
+  }
+
   holdArrow(arrow: Arrow): void {
     this.arrows.add(arrow);
     this.sendDisc();

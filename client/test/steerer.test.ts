@@ -1,4 +1,11 @@
-import { HARBOURS, PixelPoint, Square, squareAnchor } from "@utopia/engine";
+import {
+  HARBOURS,
+  PILOT_BOUNDS,
+  PixelPoint,
+  Square,
+  squareAnchor,
+  squareUnder,
+} from "@utopia/engine";
 import { describe, expect, it } from "vitest";
 import { BuildMenu } from "../src/app/build-menu.js";
 import { BuildMenuControls } from "../src/input/build-menu-controls.js";
@@ -49,6 +56,32 @@ const within = (square: Square) => {
   const anchor = squareAnchor(square);
   return new PixelPoint(anchor.x + 2, anchor.y + 3);
 };
+
+/** A mouse game whose player has bought a fishing boat and taken it out of the harbour. */
+function aSailingMouseGame() {
+  const game = aMouseGame();
+  game.controller.pressKeypad(9);
+  game.controller.pressKeypad("enter");
+  game.steerer.click(clickOn(HARBOURS.left));
+  game.play(0.2);
+  return game;
+}
+
+/** Every heading the boat takes on its way to a square, each time it turns to a new one. */
+function headingsWhile(
+  game: ReturnType<typeof aMouseGame>,
+  run: { seconds: number; shortOf: Square },
+): string[] {
+  const headings: string[] = [];
+  for (let frame = 0; frame < run.seconds * 60; frame += 1) {
+    game.play(1 / 60);
+    const { x, y, vx, vy } = game.island().pilot;
+    if (squareUnder(new PixelPoint(x, y)) === run.shortOf) break;
+    const heading = `${vx},${vy}`;
+    if ((vx !== 0 || vy !== 0) && heading !== headings.at(-1)) headings.push(heading);
+  }
+  return headings;
+}
 
 /** A click inside a square, made at some place on the screen. */
 const clickOn = (square: Square) => ({ point: within(square), anchor: { x: 300, y: 200 } });
@@ -174,6 +207,45 @@ describe("Steerer", () => {
       "fishingBoat",
       "cursor",
     ]);
+  });
+
+  it("holds one heading down a straight run of open water", () => {
+    const game = aMouseGame();
+    game.controller.pressKeypad(9);
+    game.controller.pressKeypad("enter");
+    game.steerer.click(clickOn(HARBOURS.left));
+    game.play(0.2);
+    game.steerer.aim(within(Square.at(9, 2)));
+    game.play(4);
+
+    game.steerer.aim(within(Square.at(9, 12)));
+    const headings = headingsWhile(game, { seconds: 8, shortOf: Square.at(9, 12) });
+
+    expect(headings.length).toBeLessThanOrEqual(2);
+  });
+
+  it("brings the boat right under the pointer once it is over the pointer's square", () => {
+    const game = aSailingMouseGame();
+    game.steerer.aim(within(Square.at(1, 9)));
+    game.play(12);
+    const spot = squareAnchor(Square.at(1, 9));
+
+    game.steerer.aim(spot);
+    game.play(2);
+
+    const { x, y } = game.island().pilot;
+    expect(Math.max(Math.abs(x - spot.x), Math.abs(y - spot.y))).toBeLessThanOrEqual(1);
+  });
+
+  it("brings the boat right up to the edge of the sea when pointed past it", () => {
+    const game = aSailingMouseGame();
+    game.steerer.aim(new PixelPoint(11, 43));
+    game.play(8);
+
+    game.steerer.aim(new PixelPoint(4, 44));
+    game.play(2);
+
+    expect(game.island().pilot.x).toBe(PILOT_BOUNDS.left);
   });
 
   it("sails round the island to a spot out of its sight, and anchors there", () => {
