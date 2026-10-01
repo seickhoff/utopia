@@ -1,0 +1,37 @@
+{
+  "name": "utopia",
+  "version": "2026.9.1",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "engine",
+    "ai",
+    "protocol",
+    "server",
+    "client",
+    "tools"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "predev": "npm run build:libraries",
+    "dev": "concurrently -n engine,ai,protocol,server,client -c yellow,cyan,magenta,green,blue \"npm run dev -w @utopia/engine\" \"npm run dev -w @utopia/ai\" \"npm run dev -w @utopia/protocol\" \"npm run dev -w @utopia/server\" \"npm run dev -w @utopia/client\"",
+    "build:libraries": "npm run build -w @utopia/engine && npm run build -w @utopia/ai && npm run build -w @utopia/protocol",
+    "build": "npm run build:libraries && npm run build -w @utopia/client && npm run build -w @utopia/server",
+    "build:server": "npm run build:libraries && npm run build -w @utopia/server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run build:libraries && npm run typecheck -w @utopia/engine && npm run typecheck -w @utopia/ai && npm run typecheck -w @utopia/protocol && npm run typecheck -w @utopia/server && npm run typecheck -w @utopia/client && npm run typecheck -w @utopia/tools",
+    "rom": "npm run rom -w @utopia/tools",
+    "format": "prettier --write . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude",
+    "format:check": "prettier --check . --ignore-path .gitignore --ignore-path .prettierignore --ignore-path .git/info/exclude"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "concurrently": "^10.0.5",
+    "prettier": "^3.5.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.1"
+  }
+}

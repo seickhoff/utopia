@@ -1,0 +1,213 @@
+import {
+  SIDES,
+  type GameSnapshot,
+  type PilotSnapshot,
+  type Side,
+  type SpriteSnapshot,
+} from "@utopia/engine";
+import {
+  Mesh,
+  MeshBasicMaterial,
+  MeshLambertMaterial,
+  type BufferGeometry,
+  type Material,
+  type Scene,
+} from "three";
+import { CARD_SIZE, worldOfSprite, type WorldPoint } from "../board/rom-space.js";
+import { trianglesGeometry } from "./geometry.js";
+import { landAt, type GroundReading } from "./ground-fit.js";
+import { fleetUnderWay, fleetWakes, type FleetKind } from "./fleets.js";
+import { cursorFrame } from "./item-kits.js";
+import type { KitStyle } from "./kit-style.js";
+import { rgb } from "./shapes.js";
+import { SIDE_STYLES } from "./town-layout.js";
+
+const PIRATE_SIZE = { width: 8, height: 4 };
+const CURSOR_LIFT = 0.03;
+/** The cursor is drawn over everything else, clouds and hills included, so it is never cut off. */
+const OVER_EVERYTHING = 10;
+/** Where the cursor looks for the highest land under its square: corners and middle. */
+const CURSOR_CORNERS = [
+  { x: -0.5, z: -0.5 },
+  { x: 0.5, z: -0.5 },
+  { x: 0, z: 0 },
+  { x: -0.5, z: 0.5 },
+  { x: 0.5, z: 0.5 },
+];
+const SINK_PER_FRAME = 0.04;
+/** Pirates fly no side's colour. */
+const PIRATE_STYLE: KitStyle = { accent: rgb("#2e2a33") };
+const MAX_PIRATES = 2;
+
+/** A fleet's boats, and the wake they leave, which shows only while they are under way. */
+interface FleetMeshes {
+  readonly hull: Mesh;
+  readonly wake: Mesh;
+}
+
+interface PilotMeshes {
+  readonly cursor: Mesh;
+  readonly boats: Readonly<Record<"fishingBoat" | "ptBoat", FleetMeshes>>;
+}
+
+/** How much of the way to its new heading a fleet swings each frame: a turn, not a snap. */
+const HEADING_EASE = 0.12;
+
+/** The sprites that move under their own steam: each governor's cursor or boat, and the pirates. */
+export class MoverRenderer {
+  private readonly pilots: Readonly<Record<Side, PilotMeshes>>;
+  private readonly pirates: readonly FleetMeshes[];
+
+  constructor(
+    scene: Scene,
+    private readonly ground: GroundReading,
+  ) {
+    const materials = {
+      hull: new MeshLambertMaterial({ vertexColors: true }),
+      wake: wakeMaterial(),
+    };
+    const overlay = overlayMaterial();
+    const addFleet = (fleet: { kind: FleetKind; style: KitStyle }) =>
+      fleetMeshes({ scene, fleet, materials });
+    const addCursor = (geometry: BufferGeometry) =>
+      addHidden(scene, { mesh: new Mesh(geometry, overlay), order: OVER_EVERYTHING });
+    this.pilots = {
+      left: pilotMeshes({ side: "left", addFleet, addCursor }),
+      right: pilotMeshes({ side: "right", addFleet, addCursor }),
+    };
+    this.pirates = Array.from({ length: MAX_PIRATES }, () =>
+      addFleet({ kind: "pirate", style: PIRATE_STYLE }),
+    );
+  }
+
+  update(snapshot: GameSnapshot): void {
+    const over = snapshot.phase === "over";
+    SIDES.forEach((side) =>
+      this.showPilot({ meshes: this.pilots[side], pilot: snapshot.islands[side].pilot, over }),
+    );
+    const pirates = snapshot.sprites.filter((sprite) => sprite.kind === "pirate");
+    this.pirates.forEach((mesh, index) => showPirate(mesh, pirates[index]));
+  }
+
+  private showPilot(shown: { meshes: PilotMeshes; pilot: PilotSnapshot; over: boolean }): void {
+    const { meshes, pilot, over } = shown;
+    const centre = worldOfSprite(pilot, CARD_SIZE);
+    meshes.cursor.visible = !over && pilot.mode === "cursor";
+    meshes.boats.fishingBoat.hull.visible =
+      !over && pilot.aboard === "fishingBoat" && pilot.mode !== "cursor";
+    meshes.boats.ptBoat.hull.visible =
+      !over && pilot.aboard === "ptBoat" && pilot.mode !== "cursor";
+    if (meshes.cursor.visible) this.placeCursor(meshes.cursor, centre);
+    if (pilot.aboard !== "none") steer(meshes.boats[pilot.aboard], { centre, sprite: pilot });
+  }
+
+  /** Lays the cursor level over the highest land in its square, so no slope hides a side of it. */
+  private placeCursor(cursor: Mesh, centre: WorldPoint): void {
+    const highest = Math.max(
+      ...CURSOR_CORNERS.map((corner) =>
+        landAt(this.ground, { x: centre.x + corner.x, z: centre.z + corner.z }),
+      ),
+    );
+    cursor.position.set(centre.x, highest + CURSOR_LIFT, centre.z);
+  }
+}
+
+interface PilotBuild {
+  readonly side: Side;
+  readonly addFleet: (fleet: { kind: FleetKind; style: KitStyle }) => FleetMeshes;
+  readonly addCursor: (geometry: BufferGeometry) => Mesh;
+}
+
+function pilotMeshes(build: PilotBuild): PilotMeshes {
+  const style = SIDE_STYLES[build.side];
+  return {
+    cursor: build.addCursor(trianglesGeometry(cursorFrame(style))),
+    boats: {
+      fishingBoat: build.addFleet({ kind: "fishingBoat", style }),
+      ptBoat: build.addFleet({ kind: "ptBoat", style }),
+    },
+  };
+}
+
+interface FleetBuild {
+  readonly scene: Scene;
+  readonly fleet: { kind: FleetKind; style: KitStyle };
+  readonly materials: { hull: Material; wake: Material };
+}
+
+/** A fleet in formation, with its wake riding along as part of it. */
+function fleetMeshes(build: FleetBuild): FleetMeshes {
+  const { kind, style } = build.fleet;
+  const hull = new Mesh(trianglesGeometry(fleetUnderWay(kind, style)), build.materials.hull);
+  const wake = new Mesh(trianglesGeometry(fleetWakes(kind)), build.materials.wake);
+  hull.add(wake);
+  addHidden(build.scene, { mesh: hull, order: 0 });
+  return { hull, wake };
+}
+
+/** The foam behind a boat: white, faint, and never hiding the water under it. */
+function wakeMaterial(): MeshBasicMaterial {
+  return new MeshBasicMaterial({
+    color: "#ffffff",
+    transparent: true,
+    opacity: 0.55,
+    depthWrite: false,
+  });
+}
+
+/** Lit like the boats, but drawn last and through whatever stands in front of it. */
+function overlayMaterial(): MeshLambertMaterial {
+  return new MeshLambertMaterial({
+    vertexColors: true,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+}
+
+function addHidden(scene: Scene, adding: { mesh: Mesh; order: number }): Mesh {
+  const { mesh } = adding;
+  mesh.visible = false;
+  mesh.renderOrder = adding.order;
+  scene.add(mesh);
+  return mesh;
+}
+
+function showPirate(fleet: FleetMeshes, pirate: SpriteSnapshot | undefined): void {
+  fleet.hull.visible = pirate !== undefined;
+  if (pirate === undefined) return;
+  steer(fleet, { centre: worldOfSprite(pirate, PIRATE_SIZE), sprite: pirate });
+}
+
+interface Voyage {
+  readonly centre: WorldPoint;
+  readonly sprite: {
+    readonly vx: number;
+    readonly vy: number;
+    readonly look: string;
+    readonly frame: number;
+  };
+}
+
+/**
+ * Puts a fleet where its sprite is and swings it round to its heading, its wake showing while it
+ * is under way; a fleet going down sinks lower with every frame of the cartridge's animation.
+ */
+function steer(fleet: FleetMeshes, voyage: Voyage): void {
+  const { centre, sprite } = voyage;
+  const { hull } = fleet;
+  const sinking = sprite.look === "sinkingBoat" || sprite.look === "sinkingPirate";
+  const underWay = !sinking && (sprite.vx !== 0 || sprite.vy !== 0);
+  hull.position.set(centre.x, sinking ? -SINK_PER_FRAME * sprite.frame : 0, centre.z);
+  hull.rotation.z = sinking ? 0.08 * sprite.frame : 0;
+  fleet.wake.visible = underWay;
+  if (underWay)
+    hull.rotation.y +=
+      shortestTurn(hull.rotation.y, -Math.atan2(sprite.vy, sprite.vx)) * HEADING_EASE;
+}
+
+/** The smaller way round from one heading to another, in radians. */
+function shortestTurn(from: number, to: number): number {
+  const gap = (to - from) % (2 * Math.PI);
+  return gap > Math.PI ? gap - 2 * Math.PI : gap < -Math.PI ? gap + 2 * Math.PI : gap;
+}

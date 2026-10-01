@@ -1,0 +1,14 @@
+{
+  "name": "@utopia/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "rom": "tsx src/extract-rom.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0",
+    "tsx": "^4.20.0"
+  }
+}

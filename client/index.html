@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0f2c" />
+    <meta
+      name="description"
+      content="Utopia: govern your island. A remake of the 1981 Intellivision classic."
+    />
+    <title>Utopia</title>
+  </head>
+  <body data-screen="title">
+    <div id="stage">
+      <canvas id="scene" aria-label="The islands of Utopia"></canvas>
+      <canvas
+        id="classic"
+        aria-label="The islands of Utopia, as the Intellivision drew them"
+      ></canvas>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
