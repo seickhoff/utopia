@@ -25,8 +25,8 @@ const KEY_USES: readonly ControlUse[] = [
 /** The same, on a touch screen: what a finger does on the board, and what two do. */
 const TOUCH_USES: readonly ControlUse[] = [
   { controls: ["Tap"], does: "your land to build" },
-  { controls: ["Tap"], does: "your boat, then the sea, to sail" },
-  { controls: ["Drag"], does: "to steer" },
+  { controls: ["Tap"], does: "your boat to sail or anchor" },
+  { controls: ["Drag"], does: "anywhere to steer" },
   { controls: ["Pinch"], does: "to zoom" },
   { controls: ["Two fingers"], does: "up or down to tilt" },
 ];

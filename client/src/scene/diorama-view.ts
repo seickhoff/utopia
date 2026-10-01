@@ -1,4 +1,4 @@
-import type { GameSnapshot, PixelPoint, Side } from "@utopia/engine";
+import type { GameSnapshot, PixelPoint, Side, Way } from "@utopia/engine";
 import {
   Color,
   DirectionalLight,
@@ -19,7 +19,8 @@ import {
 } from "./camera-framing.js";
 import { CloudShadows } from "./cloud-shadows.js";
 import { FishRenderer } from "./fish-renderer.js";
-import { FloorPicker, type ScreenPosition } from "./floor-picker.js";
+import type { ScreenPosition } from "../board/screen-position.js";
+import { FloorPicker } from "./floor-picker.js";
 import { Ground } from "./ground.js";
 import { addIslands } from "./island-renderer.js";
 import { LandUseMap } from "./land-use.js";
@@ -226,6 +227,11 @@ export class DioramaView {
   /** The sprite point under a pointer, or at the nearest point on the sea's cards if it is past them. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside" {
     return this.picker.nearestRomPoint(position);
+  }
+
+  /** The way a drag runs across the floor, the camera's slant undone. */
+  wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
+    return this.picker.wayAcross(drag);
   }
 
   /** The player's mouse, as their cursor or boat follows it. */

@@ -1,15 +1,18 @@
-import type { PixelPoint } from "@utopia/engine";
+import type { PixelPoint, Way } from "@utopia/engine";
 import type { ViewAngle } from "../app/view-angle.js";
+import type { ScreenPosition } from "../board/screen-position.js";
 import type { HandController } from "./hand-controller.js";
-import type { ScreenPosition } from "./screen-position.js";
-import type { Steerer } from "./steerer.js";
-import { TouchGestures } from "./touch-gestures.js";
+import type { BoardClick, Steerer } from "./steerer.js";
+import { thumbstick } from "./thumbstick.js";
+import { TouchGestures, reachOf, type Drag } from "./touch-gestures.js";
 
 /** Port for the view that knows which point of the playfield a pointer is over. */
 export interface BoardPicker {
   romPointAt(position: ScreenPosition): PixelPoint | "outside";
   /** The same, but a pointer just past the playfield's edge counts as at the nearest point on it. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside";
+  /** The way a drag across the glass runs across the board itself, x east and y south. */
+  wayAcross(drag: Drag): Way;
   /** The mouse is over the board here: the view may show it on the board itself. */
   trackPointer(position: ScreenPosition): void;
   /** The mouse has left the board, or no longer plays it. */
@@ -39,7 +42,8 @@ interface PointerStyle {
 
 /**
  * The mouse, a pen or fingers on the board. The cursor follows the mouse, a click acts, and a
- * right click clears; a finger taps to act, drags to lead, and two work the 3D camera.
+ * right click clears. A finger taps to act or send the boat, drags to lead the cursor or drive the
+ * boat, and two work the 3D camera.
  */
 export class PointerControls {
   private readonly mouse: PointerStyle = {
@@ -52,8 +56,8 @@ export class PointerControls {
 
   constructor(private readonly setup: PointerSetup) {
     const fingers = new TouchGestures({
-      tap: (at) => this.act(at),
-      lead: (at) => this.lead(at),
+      tap: (at) => this.tap(at),
+      drag: (drag) => this.drag(drag),
       camera: setup.view,
     });
     this.styles = { mouse: this.mouse, pen: this.mouse, touch: fingers };
@@ -109,9 +113,31 @@ export class PointerControls {
   }
 
   private act(at: ScreenPosition): void {
+    const click = this.clickAt(at);
+    if (click !== "outside") this.setup.steerer.click(click);
+  }
+
+  /** A finger tapped: a boat sails there, or drops anchor if the boat itself is tapped. */
+  private tap(at: ScreenPosition): void {
+    const click = this.clickAt(at);
+    if (click !== "outside") this.setup.steerer.tap(click);
+  }
+
+  /** The board point under a click or tap, and where on the page it was; "outside" off the board. */
+  private clickAt(at: ScreenPosition): BoardClick | "outside" {
     const point = this.setup.picker.romPointAt(at);
-    const anchor = { x: at.clientX, y: at.clientY };
-    if (point !== "outside") this.setup.steerer.click({ point, anchor });
+    return point === "outside" ? point : { point, anchor: { x: at.clientX, y: at.clientY } };
+  }
+
+  /**
+   * A finger dragged: a boat is driven, as by a thumbstick, the way the drag runs across the board
+   * (not the glass, which the 3D view sees at a slant); the cursor is led.
+   */
+  private drag(drag: Drag): void {
+    const { picker, controller, steerer } = this.setup;
+    const push = { reach: reachOf(drag), way: picker.wayAcross(drag) };
+    const heading = thumbstick({ ...push, held: controller.heading() });
+    steerer.drag({ point: picker.nearestRomPoint(drag.to), heading });
   }
 
   private readonly onLeave = (): void => {

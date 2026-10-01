@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DISC_RELEASED, discSense, discVelocity, steerToward } from "../src/geometry/disc.js";
+import {
+  DISC_RELEASED,
+  discSense,
+  discVelocity,
+  steadyDiscFacing,
+  steerToward,
+} from "../src/geometry/disc.js";
 import { PixelPoint, squareAnchor, squareUnder } from "../src/geometry/pixel-point.js";
 import { NEIGHBOUR_OFFSETS, Square } from "../src/geometry/square.js";
 
@@ -66,6 +72,26 @@ describe("discSense", () => {
       { x: 1, y: 0 },
       { x: 1, y: 1 },
     ]);
+  });
+});
+
+describe("steadyDiscFacing", () => {
+  const EAST = 4;
+  const EAST_SOUTH_EAST = 5;
+  /** A way across the screen this many of the disc's steps clockwise from north. */
+  const stepsRound = (steps: number) => {
+    const angle = (steps * 2 * Math.PI) / 16;
+    return { x: Math.sin(angle), y: -Math.cos(angle) };
+  };
+
+  it("keeps the disc held while the way lies near it, and turns once it is well past", () => {
+    const facing = (steps: number) => steadyDiscFacing({ way: stepsRound(steps), held: EAST });
+
+    expect([facing(4.6), facing(4.8)]).toEqual([EAST, EAST_SOUTH_EAST]);
+  });
+
+  it("faces the nearest direction when the disc is let go", () => {
+    expect(steadyDiscFacing({ way: stepsRound(4.6), held: DISC_RELEASED })).toBe(EAST_SOUTH_EAST);
   });
 });
 

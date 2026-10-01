@@ -1,4 +1,5 @@
-import type { PixelPoint } from "@utopia/engine";
+import type { PixelPoint, Way } from "@utopia/engine";
+import type { ScreenPosition } from "../board/screen-position.js";
 import type { ViewMode } from "../settings/game-setup-store.js";
 import type { GameFrame } from "../session/game-session.js";
 
@@ -8,10 +9,12 @@ export interface ModeView {
   resize(): void;
   show(): void;
   hide(): void;
-  romPointAt(position: { clientX: number; clientY: number }): PixelPoint | "outside";
-  nearestRomPoint(position: { clientX: number; clientY: number }): PixelPoint | "outside";
+  romPointAt(position: ScreenPosition): PixelPoint | "outside";
+  nearestRomPoint(position: ScreenPosition): PixelPoint | "outside";
+  /** The way a drag across the glass runs across the board itself, x east and y south. */
+  wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way;
   /** The mouse is over the board here: a view may show it on the board itself. */
-  trackPointer(position: { clientX: number; clientY: number }): void;
+  trackPointer(position: ScreenPosition): void;
   /** The mouse has left the board, or no longer plays it. */
   losePointer(): void;
 }
@@ -39,15 +42,19 @@ export class ViewSwitch {
     this.views[this.mode].resize();
   }
 
-  romPointAt(position: { clientX: number; clientY: number }): PixelPoint | "outside" {
+  romPointAt(position: ScreenPosition): PixelPoint | "outside" {
     return this.views[this.mode].romPointAt(position);
   }
 
-  nearestRomPoint(position: { clientX: number; clientY: number }): PixelPoint | "outside" {
+  nearestRomPoint(position: ScreenPosition): PixelPoint | "outside" {
     return this.views[this.mode].nearestRomPoint(position);
   }
 
-  trackPointer(position: { clientX: number; clientY: number }): void {
+  wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
+    return this.views[this.mode].wayAcross(drag);
+  }
+
+  trackPointer(position: ScreenPosition): void {
     this.views[this.mode].trackPointer(position);
   }
 

@@ -58,7 +58,7 @@ const within = (square: Square) => {
 };
 
 /** A mouse game whose player has bought a fishing boat and taken it out of the harbour. */
-function aSailingMouseGame() {
+function aSailingGame() {
   const game = aMouseGame();
   game.controller.pressKeypad(9);
   game.controller.pressKeypad("enter");
@@ -225,7 +225,7 @@ describe("Steerer", () => {
   });
 
   it("brings the boat right under the pointer once it is over the pointer's square", () => {
-    const game = aSailingMouseGame();
+    const game = aSailingGame();
     game.steerer.aim(within(Square.at(1, 9)));
     game.play(12);
     const spot = squareAnchor(Square.at(1, 9));
@@ -238,7 +238,7 @@ describe("Steerer", () => {
   });
 
   it("brings the boat right up to the edge of the sea when pointed past it", () => {
-    const game = aSailingMouseGame();
+    const game = aSailingGame();
     game.steerer.aim(new PixelPoint(11, 43));
     game.play(8);
 
@@ -336,5 +336,77 @@ describe("BuildMenuControls", () => {
     game.play(1 / 60);
 
     expect(game.island().selection).toBe("school");
+  });
+});
+
+describe("Steerer under a finger", () => {
+  const NORTH = 0;
+  /** Out of the left harbour lies open water to the south; land is just north of it. */
+  const SOUTH = 8;
+  const pilotSquare = (game: ReturnType<typeof aMouseGame>) => {
+    const { x, y } = game.island().pilot;
+    return squareUnder(new PixelPoint(x, y));
+  };
+
+  it("sails a boat to where a finger taps, and keeps it out on the water there", () => {
+    const game = aSailingGame();
+
+    game.steerer.tap(clickOn(Square.at(9, 2)));
+    game.play(6);
+
+    expect([game.island().pilot.mode, pilotSquare(game)]).toEqual(["sailing", Square.at(9, 2)]);
+  });
+
+  it("drops anchor when the boat itself is tapped, handing back the cursor", () => {
+    const game = aSailingGame();
+    const { x, y } = game.island().pilot;
+
+    game.steerer.tap({ point: new PixelPoint(x + 2, y - 1), anchor: { x: 300, y: 200 } });
+    game.play(0.1);
+
+    expect([game.island().pilot.mode, game.occupantAt(HARBOURS.left)]).toEqual([
+      "cursor",
+      "fishingBoat",
+    ]);
+  });
+
+  it("takes out an anchored boat that is tapped", () => {
+    const game = aMouseGame();
+    game.controller.pressKeypad(9);
+    game.controller.pressKeypad("enter");
+
+    game.steerer.tap(clickOn(HARBOURS.left));
+    game.play(2 / 60);
+
+    expect(game.island().pilot.mode).toBe("sailing");
+  });
+
+  it("drives the boat the way a finger drags, wherever on the glass it landed", () => {
+    const game = aSailingGame();
+
+    game.steerer.drag({ point: "outside", heading: SOUTH });
+    game.play(0.5);
+
+    expect([game.island().pilot.vx, game.island().pilot.vy]).toEqual([0, 10]);
+  });
+
+  it("lets go of the boat once the finger driving it lifts", () => {
+    const game = aSailingGame();
+    game.steerer.drag({ point: "outside", heading: SOUTH });
+    game.play(0.5);
+
+    game.steerer.release();
+    game.play(0.1);
+
+    expect([game.island().pilot.vx, game.island().pilot.vy]).toEqual([0, 0]);
+  });
+
+  it("leads the cursor to the finger, square by square", () => {
+    const game = aMouseGame();
+
+    game.steerer.drag({ point: within(Square.at(7, 5)), heading: NORTH });
+    game.play(1 / 60);
+
+    expect([game.island().pilot.x, game.island().pilot.y]).toEqual([48, 64]);
   });
 });

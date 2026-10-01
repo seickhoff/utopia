@@ -1,4 +1,4 @@
-import { PixelPoint } from "@utopia/engine";
+import { PixelPoint, type Way } from "@utopia/engine";
 import { FRAME_HEIGHT, FRAME_WIDTH } from "./pixel-frame.js";
 import { BORDER } from "./screen.js";
 
@@ -31,6 +31,13 @@ export function spritePointAt(pixel: ScreenPixel): PixelPoint | "outside" {
 export function nearestSpritePointAt(pixel: ScreenPixel): PixelPoint {
   const { x, y } = playfieldPixelAt(pixel);
   return spriteOver({ x: within(x, PLAYFIELD.width), y: within(y, PLAYFIELD.height) });
+}
+
+/** The way a drag across the screen runs across the playfield, in its pixels: x east, y south. */
+export function wayAcrossPlayfield(drag: { from: ScreenPixel; to: ScreenPixel }): Way {
+  const from = playfieldPixelAt(drag.from);
+  const to = playfieldPixelAt(drag.to);
+  return { x: to.x - from.x, y: to.y - from.y };
 }
 
 function playfieldPixelAt(pixel: ScreenPixel): { x: number; y: number } {

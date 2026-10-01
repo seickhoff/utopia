@@ -1,12 +1,8 @@
-import type { PixelPoint } from "@utopia/engine";
+import type { PixelPoint, Way } from "@utopia/engine";
 import { Plane, Raycaster, Vector2, Vector3, type Camera } from "three";
 import { isOnBoard, nearestOnBoard, spriteOverWorld, type WorldPoint } from "../board/rom-space.js";
+import type { ScreenPosition } from "../board/screen-position.js";
 import type { PointerSpot } from "./pointer-renderer.js";
-
-export interface ScreenPosition {
-  readonly clientX: number;
-  readonly clientY: number;
-}
 
 /** Where a pointer's ray is taken to meet the playfield: a little above the sea. */
 const PICKING_PLANE = new Plane(new Vector3(0, 1, 0), -0.05);
@@ -39,6 +35,21 @@ export class FloorPicker {
     if (mouse === "away") return "away";
     const hit = this.floorAt(mouse);
     return hit === "sky" || !isOnBoard(hit) ? "away" : hit;
+  }
+
+  /**
+   * The way a drag across the glass runs across the floor itself, x east and y south. The camera
+   * looks down at a slant, so a drag up the glass covers more floor than one across it; meeting
+   * each end's ray with the floor undoes that. A drag that reaches over the horizon is taken as it
+   * lies on the glass.
+   */
+  wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
+    const from = this.floorAt(drag.from);
+    const to = this.floorAt(drag.to);
+    if (from === "sky" || to === "sky") {
+      return { x: drag.to.clientX - drag.from.clientX, y: drag.to.clientY - drag.from.clientY };
+    }
+    return { x: to.x - from.x, y: to.z - from.z };
   }
 
   /** Where a pointer's ray meets the floor, or "sky" if it passes over the horizon. */

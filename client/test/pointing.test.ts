@@ -1,6 +1,10 @@
 import { PixelPoint } from "@utopia/engine";
 import { describe, expect, it } from "vitest";
-import { nearestSpritePointAt, spritePointAt } from "../src/classic/pointing.js";
+import {
+  nearestSpritePointAt,
+  spritePointAt,
+  wayAcrossPlayfield,
+} from "../src/classic/pointing.js";
 import { BORDER } from "../src/classic/screen.js";
 
 const SCANLINES_PER_PIXEL = 2;
@@ -22,5 +26,11 @@ describe("pointing at the classic screen", () => {
 
   it("takes a pointer over the border, which looks just like the sea, for the sea's nearest point", () => {
     expect(nearestSpritePointAt(overPlayfield(-3, 40))).toEqual(new PixelPoint(4, 44));
+  });
+
+  it("finds the way a drag runs across the playfield, in its pixels, not the screen's scanlines", () => {
+    const drag = { from: overPlayfield(10, 10), to: overPlayfield(20, 20) };
+
+    expect(wayAcrossPlayfield(drag)).toEqual({ x: 10, y: 10 });
   });
 });

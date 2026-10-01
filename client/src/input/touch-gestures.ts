@@ -1,4 +1,4 @@
-import type { ScreenPosition } from "./screen-position.js";
+import type { ScreenPosition } from "../board/screen-position.js";
 
 /** A finger on the board: which one it is, and where on the page. */
 export interface Finger extends ScreenPosition {
@@ -11,21 +11,32 @@ export interface CameraTurns {
   zoomBy(factor: number): void;
 }
 
+/** A lone finger dragged across the glass: where it landed, and where it is now. */
+export interface Drag {
+  readonly from: ScreenPosition;
+  readonly to: ScreenPosition;
+}
+
 export interface FingerWork {
-  /** A lone finger lifted about where it landed: a click, there. */
+  /** A lone finger lifted about where it landed: a tap, there. */
   tap(at: ScreenPosition): void;
-  /** A lone finger moving away from where it landed: the cursor or the boat follows it. */
-  lead(at: ScreenPosition): void;
+  /** A lone finger moving away from where it landed. */
+  drag(drag: Drag): void;
   readonly camera: CameraTurns;
 }
 
 /** How far a finger may roll and still tap, in page pixels. */
-const TAP_SLOP = 10;
+export const TAP_SLOP = 10;
+
+/** How far a drag has carried the finger across the glass, in page pixels. */
+export function reachOf(drag: Drag): number {
+  return Math.hypot(drag.to.clientX - drag.from.clientX, drag.to.clientY - drag.from.clientY);
+}
 /** Degrees the view tilts for each page pixel two fingers slide up or down together. */
 const TILT_PER_PIXEL = 0.25;
 
-/** What the fingers down are doing: one held still, one leading, or two turning the camera. */
-type Gesture = "still" | "leading" | "turning";
+/** What the fingers down are doing: one held still, one dragging, or two turning the camera. */
+type Gesture = "still" | "dragging" | "turning";
 
 /** Two fingers: how far apart, and how far down the page their middle is. */
 interface Span {
@@ -40,8 +51,8 @@ interface Step {
 }
 
 /**
- * Fingers on the board. One finger tapped acts where it lifts; one finger dragged leads the cursor
- * or the boat. Two fingers work the 3D camera: spread or pinch to zoom, slide up or down together
+ * Fingers on the board. One finger tapped acts where it lifts; one finger dragged leads the cursor,
+ * or drives the boat as a thumbstick. Two fingers work the 3D camera: spread or pinch to zoom, slide up or down together
  * to tilt; and once two have touched, nothing taps until every finger is off the glass.
  */
 export class TouchGestures {
@@ -51,7 +62,7 @@ export class TouchGestures {
   private landed: ScreenPosition = { clientX: 0, clientY: 0 };
   private readonly moves: Readonly<Record<Gesture, (step: Step) => void>> = {
     still: (step) => this.stir(step.at),
-    leading: (step) => this.work.lead(step.at),
+    dragging: (step) => this.work.drag({ from: this.landed, to: step.at }),
     turning: (step) => this.turn(step.before),
   };
 
@@ -86,12 +97,11 @@ export class TouchGestures {
     this.landed = positionOf(finger);
   }
 
-  /** A still finger that rolls past the slop stops being a tap and starts to lead. */
+  /** A still finger that rolls past the slop stops being a tap and starts to drag. */
   private stir(at: ScreenPosition): void {
-    const { clientX, clientY } = this.landed;
-    if (Math.hypot(at.clientX - clientX, at.clientY - clientY) <= TAP_SLOP) return;
-    this.gesture = "leading";
-    this.work.lead(at);
+    if (reachOf({ from: this.landed, to: at }) <= TAP_SLOP) return;
+    this.gesture = "dragging";
+    this.work.drag({ from: this.landed, to: at });
   }
 
   private turn(before: Span | "unpaired"): void {

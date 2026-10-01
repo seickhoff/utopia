@@ -7,10 +7,12 @@ export {
   DISC_RELEASED,
   STILL,
   discVelocity,
+  steadyDiscFacing,
   steerToward,
   type DiscDirection,
   type DiscReading,
   type Velocity,
+  type Way,
 } from "./geometry/disc.js";
 export { NOBODY, SIDES, opponentOf, type Holder, type Side } from "./board/side.js";
 export {
@@ -96,7 +98,7 @@ export {
 export type { DrifterKind } from "./sea/drifter.js";
 export { SeaChart, type Passage, type Waters } from "./sea/sea-chart.js";
 export { Navigator, type Voyage } from "./sea/navigator.js";
-export { steerAlong, steerWithin, type Leg, type Mooring } from "./sea/course.js";
+export { steerAlong, steerWithin, type Leg, type Spot } from "./sea/course.js";
 export { watersOf } from "./game/waters.js";
 export { isWeather, type WeatherKind } from "./sea/weather-kind.js";
 export type { SeaRules } from "./game/game-rules.js";

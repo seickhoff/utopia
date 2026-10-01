@@ -1,8 +1,14 @@
-import type { PixelPoint, Side } from "@utopia/engine";
+import type { PixelPoint, Side, Way } from "@utopia/engine";
+import type { ScreenPosition } from "../board/screen-position.js";
 import type { GameFrame } from "../session/game-session.js";
 import { ClassicPixels, FRAME_HEIGHT, FRAME_WIDTH, composeFrame } from "./pixel-frame.js";
 import { pixelScale, shownSize, type Area } from "./pixel-scale.js";
-import { nearestSpritePointAt, spritePointAt, type ScreenPixel } from "./pointing.js";
+import {
+  nearestSpritePointAt,
+  spritePointAt,
+  wayAcrossPlayfield,
+  type ScreenPixel,
+} from "./pointing.js";
 import {
   BORDER,
   SCREEN_HEIGHT,
@@ -12,12 +18,6 @@ import {
   type LabelScene,
 } from "./screen.js";
 import type { Readouts } from "./status-row.js";
-
-/** Where a pointer is on the page. */
-export interface ScreenPosition {
-  readonly clientX: number;
-  readonly clientY: number;
-}
 
 /** Whether the border names the screen's numbers and says whose island is whose. */
 type LabelSetting = "on" | "off";
@@ -85,6 +85,14 @@ export class ClassicView {
   /** The same, but a pointer over the border, blue as the sea, stands for the sea's nearest point. */
   nearestRomPoint(position: ScreenPosition): PixelPoint | "outside" {
     return nearestSpritePointAt(this.screenPixelAt(position));
+  }
+
+  /** The way a drag runs across the playfield, in its own pixels. */
+  wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
+    return wayAcrossPlayfield({
+      from: this.screenPixelAt(drag.from),
+      to: this.screenPixelAt(drag.to),
+    });
   }
 
   private screenPixelAt(position: ScreenPosition): ScreenPixel {
