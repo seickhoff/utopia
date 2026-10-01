@@ -1,6 +1,6 @@
 import type { GameEvent, Side } from "@utopia/engine";
 import { presentBuildMenu } from "../hud/build-menu-presenter.js";
-import { NO_YEAR_END } from "../hud/game-view.js";
+import { NO_YEAR_END, type YearLogViewModel } from "../hud/game-view.js";
 import { presentHud, type LastRazz } from "../hud/hud-presenter.js";
 import { presentYearEnd, type RoundEnded } from "../hud/year-end-presenter.js";
 import { YearLog } from "../hud/year-log.js";
@@ -29,15 +29,17 @@ export class GameHud {
   private lastReport: RoundEnded | "none" = "none";
   private readonly log = new YearLog();
   /** Presented again only when a year ends, so the frames between cost nothing. */
-  private yearLog = presentYearLog([]);
+  private yearLog: YearLogViewModel;
   private match: Match;
 
   constructor(private readonly setup: HudSetup) {
     this.match = setup.match;
+    this.yearLog = this.presentLog();
   }
 
   rename(names: Readonly<Record<Side, string>>): void {
     this.match = { ...this.match, names };
+    this.yearLog = this.presentLog();
   }
 
   present(frame: GameFrame): void {
@@ -64,6 +66,10 @@ export class GameHud {
 
   private closeYear(report: RoundEnded): void {
     this.lastReport = report;
-    this.yearLog = presentYearLog(this.log.years());
+    this.yearLog = this.presentLog();
+  }
+
+  private presentLog(): YearLogViewModel {
+    return presentYearLog({ years: this.log.years(), names: this.match.names });
   }
 }

@@ -15,6 +15,11 @@
   --ink-dim: #9aa3d6;
   --left: #43c275;
   --right: #ff5d3d;
+  /* The islands' colours as chart marks: steps of the same hues, checked against the log's panel
+     for lightness and red-green colour-blind separation */
+  --chart-left: #3aae66;
+  --chart-right: #cc3d26;
+  --log-surface: #0c1028;
   --gold: #ffd35a;
   --overlay: #f2a45f;
   --overlay-shade: #d98a47;
@@ -1607,4 +1612,285 @@ body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] #st
   margin: 0;
   color: var(--ink-dim);
   font-size: 13px;
+}
+
+/* The year-by-year log as charts: every chart reads the one year, picked by the pointer */
+
+.log-views {
+  display: inline-flex;
+  justify-self: start;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.log-views button {
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+.log-views button[aria-pressed="true"] {
+  background: var(--panel-edge);
+  color: var(--ink);
+}
+
+.log-charts {
+  display: grid;
+  gap: 18px;
+}
+
+/* The year every chart reads, held at the top as the panel scrolls */
+.log-focus-year {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+  background: var(--log-surface);
+}
+
+.log-focus-year strong {
+  color: var(--overlay);
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.log-focus-of {
+  color: var(--ink-dim);
+  font-size: 12px;
+}
+
+.log-latest {
+  margin-left: auto;
+  padding: 2px 10px;
+  border: 1px solid var(--panel-edge);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.log-legend {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.log-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* An island's key: a stroke of its line, with its mark, a dot on the left's and a square on the
+   right's, so the two never rest on colour alone */
+.log-key {
+  position: relative;
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.log-key::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  background: inherit;
+}
+
+.log-key.left {
+  background: var(--chart-left);
+}
+
+.log-key.left::after {
+  border-radius: 50%;
+}
+
+.log-key.right {
+  background: var(--chart-right);
+}
+
+.log-figure {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.log-headline {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.log-figure-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.log-figure-title {
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.log-readout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.log-value {
+  min-width: 2.5ch;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.log-value + .log-key {
+  margin-left: 6px;
+}
+
+.log-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  cursor: crosshair;
+  touch-action: pan-y;
+}
+
+.log-grid {
+  stroke: rgb(255 255 255 / 9%);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.log-tick {
+  fill: var(--ink-dim);
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.log-line.left {
+  stroke: var(--chart-left);
+}
+
+.log-line.right {
+  stroke: var(--chart-right);
+}
+
+.log-lead.left {
+  fill: var(--chart-left);
+  fill-opacity: 0.16;
+}
+
+.log-lead.right {
+  fill: var(--chart-right);
+  fill-opacity: 0.16;
+}
+
+.log-focus {
+  stroke: rgb(255 255 255 / 30%);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The focus year's marks wear a ring of the panel's colour, to stand clear where lines cross */
+.log-mark {
+  stroke: var(--log-surface);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.log-mark.left,
+.log-uprisings.left .log-rose {
+  fill: var(--chart-left);
+}
+
+.log-mark.right,
+.log-uprisings.right .log-rose {
+  fill: var(--chart-right);
+}
+
+.log-uprisings.left .log-dispersed {
+  stroke: var(--chart-left);
+}
+
+.log-uprisings.right .log-dispersed {
+  stroke: var(--chart-right);
+}
+
+.log-dispersed {
+  fill: none;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+/* The years beneath the race, its first at the left and its latest where the lines end */
+.log-years {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  padding-right: 8%;
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.log-uprising-key {
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+/* The small counts, two to a row, each name over its readings */
+.log-pairs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.log-pairs .log-figure-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }

@@ -2,11 +2,10 @@ import { useState, type ReactElement, type ReactNode } from "react";
 import { SIDE_BUTTON_LABELS, type SideButton } from "../board/controller.js";
 import type { ScreenProps } from "./App.js";
 import { BarIcon, type BarIconName } from "./BarIcons.js";
-import type { GameView, YearLogEntry } from "./game-view.js";
 import { Guide } from "./Guide.js";
 import { KeypadOverlay } from "./KeypadOverlay.js";
 import { LeaveButton } from "./LeaveButton.js";
-import { ReportTable } from "./YearEndPanel.js";
+import { YearLogPanel } from "./YearLogPanel.js";
 
 /** What the side bars open, one at a time, beside the screen. */
 type Panel = "keypad" | "guide" | "log";
@@ -242,32 +241,5 @@ function SidePanel(props: { panel: Panel; onClose: () => void; children: ReactEl
 const PANEL_BODIES: Readonly<Record<Panel, (props: ScreenProps) => ReactElement>> = {
   keypad: ({ view, actions }) => <KeypadOverlay hud={view.hud} actions={actions} />,
   guide: () => <Guide />,
-  log: ({ view }) => <YearLog view={view} />,
+  log: ({ view }) => <YearLogPanel log={view.yearLog} />,
 };
-
-function YearLog({ view }: { view: GameView }) {
-  const [left, right] = view.hud.panels;
-  if (view.yearLog.entries.length === 0) {
-    return <p className="log-empty">Each year's report will appear here as the year ends.</p>;
-  }
-  return (
-    <div className="year-log">
-      <p className="log-sides">
-        <span className="side-left">{left?.title}</span>
-        <span className="side-right">{right?.title}</span>
-      </p>
-      {view.yearLog.entries.map((entry) => (
-        <LogYear key={entry.title} entry={entry} />
-      ))}
-    </div>
-  );
-}
-
-function LogYear({ entry }: { entry: YearLogEntry }) {
-  return (
-    <section className="log-year">
-      <h3>{entry.title}</h3>
-      <ReportTable lines={entry.lines} />
-    </section>
-  );
-}

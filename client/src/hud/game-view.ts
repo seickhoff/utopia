@@ -1,5 +1,6 @@
 import type { Side } from "@utopia/engine";
 import { DEFAULT_SETUP, type GameSetup } from "../settings/game-setup-store.js";
+import { NO_CHARTS, type YearChartsViewModel } from "./year-charts-view.js";
 
 export type Screen = "title" | "playing" | "final";
 
@@ -59,9 +60,15 @@ export interface YearLogEntry {
   readonly lines: readonly YearEndLine[];
 }
 
-/** Every year so far, the latest first. */
+/**
+ * Every year so far: nothing before the first is out, the first year as text (one year makes no
+ * line), then charts, the years' tables kept beside them.
+ */
 export interface YearLogViewModel {
+  readonly shows: "nothing" | "text" | "charts";
+  /** Each year's figures, the latest first. */
   readonly entries: readonly YearLogEntry[];
+  readonly charts: YearChartsViewModel;
 }
 
 /**
@@ -177,7 +184,7 @@ export const INITIAL_VIEW: GameView = {
   setup: DEFAULT_SETUP,
   hud: EMPTY_HUD,
   yearEnd: NO_YEAR_END,
-  yearLog: { entries: [] },
+  yearLog: { shows: "nothing", entries: [], charts: NO_CHARTS },
   online: OFFLINE,
   buildMenu: NO_BUILD_MENU,
   portraits: {},
