@@ -50,10 +50,12 @@ interface Running {
   rename(names: Readonly<Record<Side, string>>): void;
   /** Draws the game after the page has changed, if no frame is coming to draw it. */
   redraw(): void;
+  /** Takes up the frames again after the player has looked away, if the game is still on. */
+  wake(): void;
 }
 
 /** Special Case: nothing being played. */
-const IDLE: Running = { onFrame: () => {}, rename: () => {}, redraw: () => {} };
+const IDLE: Running = { onFrame: () => {}, rename: () => {}, redraw: () => {}, wake: () => {} };
 
 /** Special Case: who plays before any game has begun. */
 const NO_MATCH: Match = { mine: "left", names: { left: "", right: "" }, rivalled: false };
@@ -83,6 +85,7 @@ export class GameRunner {
       onFrame: (nowMs) => this.playFrame({ session, hud, nowMs }),
       rename: (names) => hud.rename(names),
       redraw: () => {},
+      wake: () => this.frames.start(),
     };
     this.setup.input.attach(session);
     this.setup.store.update({ screen: "playing" });
@@ -98,6 +101,18 @@ export class GameRunner {
   /** Who is playing the game on now, or was last. */
   match(): Match {
     return this.current;
+  }
+
+  /**
+   * The player cannot see the board (a phone held upright): no frames are drawn, and a game in
+   * the browser, which never runs on through time it did not see, waits.
+   */
+  lookAway(): void {
+    this.frames.stop();
+  }
+
+  lookBack(): void {
+    this.running.wake();
   }
 
   /**

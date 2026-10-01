@@ -14,13 +14,26 @@ const ITEM_ROLES: Readonly<Record<ItemKind, string>> = {
   fishingBoat: "Feeds your people and makes a gold bar a year. Fish caught earn more.",
 };
 
-const SECTIONS: readonly { readonly title: string; readonly lines: readonly string[] }[] = [
+/**
+ * Who a section is for: everyone, or only the mouse and keyboard, or only a touch screen. The
+ * stylesheet shows a touch screen its own, in place of the other two.
+ */
+type Reader = "everyone" | "desk" | "touch";
+
+interface GuideSection {
+  readonly title: string;
+  readonly lines: readonly string[];
+  readonly reader: Reader;
+}
+
+const SECTIONS: readonly GuideSection[] = [
   {
     title: "The year",
     lines: [
       "A year lasts the turn length you chose. At its end each island gets 10 gold plus what its factories and fishing boats make, people are born and die, and the year is scored out of 100 on housing, food, wealth per head, schools and hospitals.",
       "If your score drops by 10 or more, or stays under 30, rebels rise on your island. If it climbs by 10 or more, or reaches 70, one leaves.",
     ],
+    reader: "everyone",
   },
   {
     title: "Weather and the sea",
@@ -28,6 +41,16 @@ const SECTIONS: readonly { readonly title: string; readonly lines: readonly stri
       "Rain, storms and hurricanes drift across the sea. Storms and hurricanes wear down what they pass over until it is destroyed, and a hurricane sinks any boat under way that it touches.",
       "Pirates sink fishing boats unless a fort is close by. Schools of fish wander through: a fishing boat over them, sailing or anchored, earns gold.",
     ],
+    reader: "everyone",
+  },
+  {
+    title: "With your fingers",
+    lines: [
+      "Tap your own empty land for the build ring, then tap a choice. Tap the middle of the ring, or away from it, to close it.",
+      "Tap your anchored boat to take it out, then tap open water to sail there and drop anchor. Drag a finger and the boat follows it.",
+      "The Keypad on the left bar chooses and clears, as the controller's did. In the 3D view, pinch to zoom and slide two fingers up or down to tilt.",
+    ],
+    reader: "touch",
   },
   {
     title: "With the mouse",
@@ -35,6 +58,7 @@ const SECTIONS: readonly { readonly title: string; readonly lines: readonly stri
       "Click your own empty land for the build ring. Head toward a choice and click, or press, drag and let go.",
       "Click your anchored boat to take it out. It follows the pointer; click open water to sail there and drop anchor. A right click clears.",
     ],
+    reader: "desk",
   },
   {
     title: "With the keys",
@@ -42,12 +66,14 @@ const SECTIONS: readonly { readonly title: string; readonly lines: readonly stri
       "Arrows or WASD move · 1–9 choose · Enter builds · 0 or Space takes out or anchors a boat · Esc clears.",
       "Hold T, C or R for both islands' total, census or last year's score · V 3D view · M sound · L labels.",
     ],
+    reader: "desk",
   },
   {
     title: "The screen",
     lines: [
       "Along the bottom: your gold (green, left), years left, seconds left, and the rival's gold (red, right). Turn on Labels to have the border name them. Hold TOTAL, CENSUS or ROUND on the left bar to show those figures in the gold corners instead, named beneath while you hold.",
     ],
+    reader: "everyone",
   },
 ];
 
@@ -61,7 +87,7 @@ export function Guide() {
       </p>
       <ItemRoles />
       {SECTIONS.map((section) => (
-        <section key={section.title}>
+        <section key={section.title} className={`guide-for-${section.reader}`}>
           <h3>{section.title}</h3>
           {section.lines.map((line) => (
             <p key={line}>{line}</p>

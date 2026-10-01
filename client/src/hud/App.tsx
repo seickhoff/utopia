@@ -6,6 +6,7 @@ import { FinalScreen } from "./FinalScreen.js";
 import type { GameView, GameViewSource, Screen } from "./game-view.js";
 import { PlayingScreen } from "./PlayingScreen.js";
 import { TitleScreen } from "./TitleScreen.js";
+import { TurnNotice } from "./TurnNotice.js";
 
 /** What the player can do from the HUD, carried out by the composition root. */
 export interface GameActions {
@@ -46,5 +47,10 @@ const SCREENS: Readonly<Record<Screen, (props: ScreenProps) => ReactElement>> = 
 export function App(props: { readonly store: GameViewSource; readonly actions: GameActions }) {
   const view = useSyncExternalStore(props.store.subscribe, props.store.getView);
   const ShownScreen = SCREENS[view.screen];
-  return <ShownScreen view={view} actions={props.actions} />;
+  return (
+    <>
+      <ShownScreen view={view} actions={props.actions} />
+      <TurnNotice />
+    </>
+  );
 }

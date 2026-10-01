@@ -108,6 +108,7 @@ function RivalChoices({ setup, onChange }: SetupFormProps) {
   return (
     <Choices
       legend="The other island"
+      className="rival-choices"
       options={OPPONENT_CHOICES.map((value) => ({ value, label: OPPONENT_LABELS[value] }))}
       chosen={setup.opponent}
       onChoose={(opponent) => onChange({ opponent })}
@@ -119,6 +120,7 @@ function ViewChoices({ setup, onChange }: SetupFormProps) {
   return (
     <Choices
       legend="View"
+      className="view-choices"
       options={VIEW_MODES.map((value) => ({ value, label: VIEW_LABELS[value] }))}
       chosen={setup.view}
       onChoose={(view) => onChange({ view })}
@@ -205,15 +207,17 @@ function RangeField({ label, shown, limit, step, value, onChange }: RangeFieldPr
 
 interface ChoicesProps<T extends string> {
   readonly legend: string;
+  readonly className: string;
   readonly options: readonly { readonly value: T; readonly label: string }[];
   readonly chosen: T;
   readonly onChoose: (value: T) => void;
 }
 
 /** A row of keys, one of which is pressed: like the overlay's, but only one stays down. */
-function Choices<T extends string>({ legend, options, chosen, onChoose }: ChoicesProps<T>) {
+function Choices<T extends string>(props: ChoicesProps<T>) {
+  const { legend, className, options, chosen, onChoose } = props;
   return (
-    <fieldset className="choices">
+    <fieldset className={`choices ${className}`}>
       <legend className="field-label">{legend}</legend>
       <div className="choice-keys">
         {options.map((option) => (

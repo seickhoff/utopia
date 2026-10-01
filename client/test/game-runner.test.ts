@@ -13,11 +13,17 @@ import type { GameFrame, GameSession } from "../src/session/game-session.js";
 
 /** The frame loop, run by the test: a frame comes only when it ticks. */
 class TickedFrames implements FrameDriver {
+  running = false;
+
   constructor(private readonly callbacks: FrameCallbacks) {}
 
-  start(): void {}
+  start(): void {
+    this.running = true;
+  }
 
-  stop(): void {}
+  stop(): void {
+    this.running = false;
+  }
 
   tick(): void {
     this.callbacks.onFrame(0);
@@ -83,7 +89,7 @@ function aRunner() {
     frames: (callbacks) => (frames = new TickedFrames(callbacks)),
     menu: new BuildMenu(),
   });
-  return { runner, view, tick: () => frames.tick() };
+  return { runner, view, tick: () => frames.tick(), running: () => frames.running };
 }
 
 describe("GameRunner once the game is over", () => {
@@ -117,5 +123,46 @@ describe("GameRunner while a game is on the go", () => {
     runner.refresh();
 
     expect(view.drawn).toEqual([]);
+  });
+});
+
+describe("GameRunner while the player looks away", () => {
+  it("draws no frames, so a game in the browser waits", () => {
+    const { runner, running } = aRunner();
+    runner.play(new StillSession(aPlayingFrame()), MATCH);
+
+    runner.lookAway();
+
+    expect(running()).toBe(false);
+  });
+
+  it("plays on once the player looks back", () => {
+    const { runner, running } = aRunner();
+    runner.play(new StillSession(aPlayingFrame()), MATCH);
+    runner.lookAway();
+
+    runner.lookBack();
+
+    expect(running()).toBe(true);
+  });
+
+  it("starts no frames on looking back at a finished game", () => {
+    const { runner, tick, running } = aRunner();
+    runner.play(new StillSession(anOverFrame()), MATCH);
+    tick();
+    runner.lookAway();
+
+    runner.lookBack();
+
+    expect(running()).toBe(false);
+  });
+
+  it("starts no frames on looking back at the title", () => {
+    const { runner, running } = aRunner();
+    runner.lookAway();
+
+    runner.lookBack();
+
+    expect(running()).toBe(false);
   });
 });

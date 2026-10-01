@@ -17,6 +17,7 @@ import { GOLD_READOUTS, readoutsWhileHeld, type Readouts } from "./classic/statu
 import { App, type GameActions } from "./hud/App.js";
 import { OFFLINE } from "./hud/game-view.js";
 import "./hud/style.css";
+import "./hud/phone.css";
 import { BuildMenuControls } from "./input/build-menu-controls.js";
 import { HandController } from "./input/hand-controller.js";
 import { playerControls, type PlayerControls } from "./input/player-controls.js";
@@ -238,6 +239,27 @@ function followTheStore(parts: Parts): void {
   });
 }
 
+/** A touch screen taller than it is wide: a phone held upright, where Utopia is not played. */
+const UPRIGHT = "(pointer: coarse) and (orientation: portrait)";
+type Hold = "upright" | "sideways";
+
+const HOLDS: Readonly<Record<Hold, (runner: GameRunner) => void>> = {
+  upright: (runner) => runner.lookAway(),
+  sideways: (runner) => runner.lookBack(),
+};
+
+/** The page follows how the phone is held: upright, the board is put away and play waits. */
+function followTheHold(parts: Parts): void {
+  const upright = window.matchMedia(UPRIGHT);
+  const follow = () => {
+    const hold: Hold = upright.matches ? "upright" : "sideways";
+    document.body.dataset.hold = hold;
+    HOLDS[hold](parts.runner);
+  };
+  follow();
+  upright.addEventListener("change", follow);
+}
+
 /** The HUD's pictures, each left out where the browser cannot draw it. */
 function pictures() {
   return { portraits: drawnOr(paintItemPortraits, {}), titlePicture: drawnOr(titlePicture, "") };
@@ -262,6 +284,7 @@ function boot(): void {
   const parts = buildParts();
   parts.store.update({ setup: parts.setups.load(), ...pictures() });
   followTheStore(parts);
+  followTheHold(parts);
   joinFromTheAddress(parts);
   const actions = actionsFor(parts);
   window.addEventListener("resize", () => parts.runner.refresh());

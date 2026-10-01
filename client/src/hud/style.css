@@ -4,6 +4,9 @@
   /* The black bars beside the classic screen, holding its controls */
   --bar: 96px;
   --gap: 12px;
+  /* Room kept clear of a phone's notch and rounded corners, held sideways */
+  --inset-left: env(safe-area-inset-left, 0px);
+  --inset-right: env(safe-area-inset-right, 0px);
   --night: #0a0f2c;
   --night-2: #131b4b;
   --panel: #151d49;
@@ -22,6 +25,12 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,
@@ -53,6 +62,7 @@ button {
   bottom: 0;
   display: grid;
   place-items: center;
+  touch-action: none;
 }
 
 body[data-screen="title"] #stage {
@@ -587,7 +597,7 @@ body[data-screen="title"] #stage {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: var(--gap);
-  padding: 10px var(--gap);
+  padding: 10px calc(var(--gap) + var(--inset-right)) 10px calc(var(--gap) + var(--inset-left));
 }
 
 .island-panel {
@@ -865,18 +875,15 @@ body[data-screen="title"] #stage {
 /* Year end */
 
 .year-end {
+  position: absolute;
+  top: var(--hud-top);
+  right: calc(var(--gap) + var(--inset-right));
+  width: calc(var(--hud-right) - 2 * var(--gap));
+  padding: 16px 14px 18px;
   border: 1px solid var(--panel-edge);
   border-radius: 16px;
   background: rgba(21, 29, 73, 0.96);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.year-end {
-  position: absolute;
-  top: var(--hud-top);
-  right: var(--gap);
-  width: calc(var(--hud-right) - 2 * var(--gap));
-  padding: 16px 14px 18px;
 }
 
 .year-end .report td {
@@ -1079,9 +1086,9 @@ body[data-view="diorama"] .year-end {
   width: 276px;
 }
 
-/* The 3D view's keys, in a line along the bottom of the picture */
+/* The 3D view's controls, in a line along the bottom of the picture */
 
-.key-strip {
+.control-strip {
   position: absolute;
   bottom: 12px;
   left: 50%;
@@ -1101,7 +1108,12 @@ body[data-view="diorama"] .year-end {
   pointer-events: none;
 }
 
-.key-strip kbd {
+/* A touch screen's line, shown in the keys' place by phone.css */
+.control-strip.touch {
+  display: none;
+}
+
+.control-strip kbd {
   display: inline-block;
   min-width: 1.6em;
   margin-right: 3px;
@@ -1133,7 +1145,7 @@ body[data-view="diorama"] .year-end {
   animation: notice-fade 4s ease-in forwards;
 }
 
-/* In the 3D view RAZZ is told above the keys */
+/* In the 3D view RAZZ is told above the controls */
 body[data-view="diorama"] .board-notice {
   bottom: 64px;
 }
@@ -1210,12 +1222,12 @@ body[data-view="diorama"] .board-notice {
 
 body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] {
   --hud-top: 0px;
-  --hud-right: var(--bar);
+  --hud-right: calc(var(--bar) + var(--inset-right));
   background: #000;
 }
 
 body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] #stage {
-  left: var(--bar);
+  left: calc(var(--bar) + var(--inset-left));
 }
 
 .screen-bar {
@@ -1232,10 +1244,14 @@ body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] #st
 
 .screen-bar.left {
   left: 0;
+  width: calc(var(--bar) + var(--inset-left));
+  padding-left: var(--inset-left);
 }
 
 .screen-bar.right {
   right: 0;
+  width: calc(var(--bar) + var(--inset-right));
+  padding-right: var(--inset-right);
 }
 
 .bar-button {
@@ -1368,12 +1384,12 @@ body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] #st
 
 .screen-panel.left {
   --panel-from: -18px;
-  left: calc(var(--bar) + 10px);
+  left: calc(var(--bar) + var(--inset-left) + 10px);
 }
 
 .screen-panel.right {
   --panel-from: 18px;
-  right: calc(var(--bar) + 10px);
+  right: calc(var(--bar) + var(--inset-right) + 10px);
 }
 
 @keyframes panel-in {

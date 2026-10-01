@@ -1,0 +1,332 @@
+/* Touch screens, and the phone held sideways: fingers for everything, in the room a phone has.
+   Loaded after style.css, so these rules win where both speak. */
+
+/* Held upright, the page asks for the phone to be turned, and the game waits behind it */
+
+.turn-notice {
+  display: none;
+}
+
+body[data-hold="upright"] .turn-notice {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 28px;
+  padding: 24px;
+  background: radial-gradient(ellipse at 50% 35%, var(--night-2), var(--night) 75%);
+  color: var(--ink);
+  text-align: center;
+  pointer-events: auto;
+}
+
+.turn-logo .pixel-text {
+  display: block;
+  width: min(60vw, 240px);
+  height: auto;
+}
+
+.turn-phone {
+  width: 46px;
+  height: 80px;
+  border: 4px solid var(--overlay);
+  border-radius: 10px;
+  box-shadow: inset 0 -8px 0 -4px var(--overlay);
+  animation: turn-phone 2.6s ease-in-out infinite;
+}
+
+@keyframes turn-phone {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  55%,
+  100% {
+    transform: rotate(-90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-phone {
+    animation: none;
+    transform: rotate(-90deg);
+  }
+}
+
+.turn-notice p {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* The guide's touch section, for a touch screen only */
+.guide-for-touch {
+  display: none;
+}
+
+/* Any touch screen: the fingers' line instead of the keys', no keys named on the buttons, and no
+   page zoom or text selection while the board is being played */
+
+@media (pointer: coarse) {
+  .control-strip.keys,
+  .key-hint {
+    display: none;
+  }
+
+  .control-strip.touch {
+    display: flex;
+  }
+
+  .guide-for-desk {
+    display: none;
+  }
+
+  .guide-for-touch {
+    display: block;
+  }
+
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* A tap on a control lands on the control itself, never through the HUD layer to the board */
+  #root button,
+  #root input:not([type="radio"]),
+  #root label {
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+}
+
+/* A phone on its side: little more than 400 pixels top to bottom */
+
+@media (pointer: coarse) and (max-height: 500px) {
+  :root {
+    --bar: 72px;
+    --hud-top: 60px;
+    --gap: 8px;
+  }
+
+  /* The title: the overlay goes wide, its settings in two columns beside each other */
+
+  .title-screen {
+    gap: 6px;
+    padding: 8px calc(12px + var(--inset-right)) 6px calc(12px + var(--inset-left));
+  }
+
+  .office {
+    width: min(100%, 760px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "logo title"
+      "name rival"
+      "pair view"
+      "take online";
+    align-items: end;
+    gap: 8px 16px;
+    padding: 10px 14px 14px;
+    border-radius: 16px 16px 30px 30px;
+  }
+
+  .overlay-head,
+  .setup {
+    display: contents;
+  }
+
+  .logo {
+    grid-area: logo;
+    align-self: stretch;
+    padding: 8px 16px;
+  }
+
+  .logo .pixel-text {
+    width: auto;
+    height: 26px;
+    margin: 0 auto;
+  }
+
+  .office-title {
+    grid-area: title;
+    align-self: center;
+  }
+
+  .name-field {
+    grid-area: name;
+  }
+
+  .setup-pair {
+    grid-area: pair;
+  }
+
+  .rival-choices {
+    grid-area: rival;
+  }
+
+  .view-choices {
+    grid-area: view;
+  }
+
+  .office .take-office {
+    grid-area: take;
+    padding: 11px 16px;
+  }
+
+  .office-or {
+    display: none;
+  }
+
+  .online-panel {
+    grid-area: online;
+  }
+
+  .credit {
+    font-size: 11px;
+  }
+
+  /* The classic screen: narrower bars with smaller buttons, so all of them fit top to bottom */
+
+  .screen-bar {
+    gap: 4px;
+    overflow-y: auto;
+  }
+
+  .bar-button {
+    width: 64px;
+    gap: 3px;
+    padding: 6px 2px 5px;
+    border-radius: 10px;
+    font-size: 9px;
+  }
+
+  .bar-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .hold-group,
+  .end-group {
+    width: 64px;
+    gap: 4px;
+    margin-top: 2px;
+    padding-top: 6px;
+  }
+
+  .hold-title {
+    font-size: 8px;
+  }
+
+  .hold-button {
+    width: 64px;
+    padding: 7px 0;
+    font-size: 9.5px;
+  }
+
+  .end-verdict {
+    font-size: 10px;
+  }
+
+  .screen-panel {
+    top: 8px;
+    bottom: 8px;
+  }
+
+  /* The 3D view: a lower top bar, each island's name over its figures, and a report that scrolls */
+
+  .top-bar {
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  .island-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 4px 10px;
+    border-radius: 10px;
+  }
+
+  .island-panel.side-right {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .island-panel h2 {
+    font-size: 12px;
+  }
+
+  .island-panel dl {
+    gap: 10px;
+  }
+
+  .stat dt {
+    font-size: 8.5px;
+  }
+
+  .stat dd {
+    font-size: 14px;
+  }
+
+  .clock {
+    padding: 3px 10px;
+  }
+
+  .clock .year {
+    font-size: 9.5px;
+  }
+
+  .clock .time {
+    font-size: 18px;
+    line-height: 1.15;
+  }
+
+  .clock.verdict .headline {
+    font-size: 13px;
+  }
+
+  .view-toggle {
+    padding: 1px 8px;
+    font-size: 10px;
+  }
+
+  body[data-view="diorama"] .year-end {
+    top: calc(var(--hud-top) + 6px);
+    width: 230px;
+    max-height: calc(100% - var(--hud-top) - 12px);
+    padding: 10px;
+    overflow-y: auto;
+  }
+
+  .year-end h2 {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  .year-end .report td {
+    font-size: 13px;
+  }
+
+  .year-end .report th {
+    padding: 1px 4px;
+    font-size: 11px;
+  }
+
+  .control-strip {
+    bottom: 6px;
+    gap: 3px 10px;
+    padding: 4px 10px;
+    font-size: 10.5px;
+  }
+
+  body[data-view="diorama"] .board-notice {
+    bottom: 40px;
+  }
+}

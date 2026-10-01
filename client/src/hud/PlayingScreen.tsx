@@ -2,7 +2,7 @@ import type { ReactElement } from "react";
 import type { SoundSetting, ViewMode } from "../settings/game-setup-store.js";
 import type { ScreenProps } from "./App.js";
 import { BuildMenu } from "./BuildMenu.js";
-import { KeyStrip } from "./KeyStrip.js";
+import { ControlStrip } from "./ControlStrip.js";
 import { LeaveButton } from "./LeaveButton.js";
 import { OnlineNotice } from "./OnlineNotice.js";
 import type { ClockViewModel, PanelViewModel } from "./game-view.js";
@@ -30,7 +30,7 @@ export function PlayingScreen(props: ScreenProps) {
 
 /**
  * The 3D view: both islands' figures and the clock along the top, the year's report beside, and
- * the keys along the bottom.
+ * the controls along the bottom.
  */
 function ModernFrame({ view, actions }: ScreenProps) {
   const [left, right] = view.hud.panels;
@@ -42,7 +42,7 @@ function ModernFrame({ view, actions }: ScreenProps) {
         {right && <IslandPanel panel={right} mine={view.hud.mine === "right"} />}
       </header>
       <YearEndPanel yearEnd={view.yearEnd} />
-      <KeyStrip />
+      <ControlStrip />
     </>
   );
 }
@@ -89,13 +89,13 @@ function Stat(props: { label: string; value: string }) {
 }
 
 const OTHER_VIEW: Readonly<Record<ViewMode, string>> = {
-  diorama: "Classic view (V)",
-  classic: "3D view (V)",
+  diorama: "Classic view",
+  classic: "3D view",
 };
 
 const SOUND_TOGGLE: Readonly<Record<SoundSetting, string>> = {
-  on: "Sound off (M)",
-  off: "Sound on (M)",
+  on: "Sound off",
+  off: "Sound on",
 };
 
 interface ToggleProps {
@@ -123,15 +123,22 @@ function Clock({ clock, setup, actions }: ClockProps) {
   );
 }
 
+/** A button's key, for the keyboard; a touch screen's stylesheet leaves it out. */
+function KeyHint({ keyName }: { keyName: string }) {
+  return <span className="key-hint"> ({keyName})</span>;
+}
+
 /** The other view, and the sound on or off. */
 export function ViewToggles({ setup, actions }: ToggleProps) {
   return (
     <>
       <button className="view-toggle" onClick={actions.toggleView}>
         {OTHER_VIEW[setup.view]}
+        <KeyHint keyName="V" />
       </button>
       <button className="view-toggle" onClick={actions.toggleSound}>
         {SOUND_TOGGLE[setup.sound]}
+        <KeyHint keyName="M" />
       </button>
     </>
   );
