@@ -8,6 +8,7 @@ import {
   SCREEN_WIDTH,
   composeBorder,
   screenLabels,
+  type LabelScene,
 } from "../src/classic/screen.js";
 import { GOLD_READOUTS, type Readouts } from "../src/classic/status-row.js";
 
@@ -16,8 +17,14 @@ const SCREENSHOT_SHAPE = 756 / 480;
 
 const CENSUS_HELD: Readouts = { left: "population", right: "population" };
 const NAMES = { left: "ADA", right: "UTOPUS" } as const;
-const labelled = (names: { left: string; right: string } = NAMES) =>
-  screenLabels({ names, readouts: GOLD_READOUTS, labels: "on" });
+const IN_PLAY: LabelScene = {
+  names: NAMES,
+  readouts: GOLD_READOUTS,
+  labels: "on",
+  phase: "playing",
+};
+const labelsOf = (change: Partial<LabelScene>) => screenLabels({ ...IN_PLAY, ...change });
+const labelled = (names: { left: string; right: string } = NAMES) => labelsOf({ names });
 
 const below = (labels: ReturnType<typeof screenLabels>) =>
   labels.filter((label) => label.y > BORDER.down + FRAME_HEIGHT);
@@ -67,40 +74,59 @@ describe("screenLabels", () => {
 
 describe("screenLabels while a side button is held", () => {
   it("names nothing while the labels are off and the gold shows", () => {
-    expect(screenLabels({ names: NAMES, readouts: GOLD_READOUTS, labels: "off" })).toEqual([]);
+    expect(labelsOf({ labels: "off" })).toEqual([]);
   });
 
   it("names the figure each corner shows, with the labels on or off", () => {
-    const labels = screenLabels({ names: NAMES, readouts: CENSUS_HELD, labels: "off" });
+    const labels = labelsOf({ readouts: CENSUS_HELD, labels: "off" });
 
     expect(below(labels).map((label) => label.text)).toEqual(["CENSUS", "CENSUS"]);
   });
 
   it("moves the middle names aside while a figure is held", () => {
-    const labels = screenLabels({ names: NAMES, readouts: CENSUS_HELD, labels: "on" });
+    const labels = labelsOf({ readouts: CENSUS_HELD });
 
     expect(below(labels).map((label) => label.text)).toEqual(["CENSUS", "CENSUS"]);
   });
 
   it("ends each corner's name where its figure ends, as the figures are right-aligned", () => {
     const held: Readouts = { left: "lastRound", right: "lastRound" };
-    const [left] = below(screenLabels({ names: NAMES, readouts: held, labels: "off" }));
+    const [left] = below(labelsOf({ readouts: held, labels: "off" }));
     const figureEnds = BORDER.across + 5 * 8;
 
     expect(left.x + left.text.length * 8).toBe(figureEnds);
   });
 
   it("keeps a long name at the left corner on the screen", () => {
-    const [left] = below(screenLabels({ names: NAMES, readouts: CENSUS_HELD, labels: "off" }));
+    const [left] = below(labelsOf({ readouts: CENSUS_HELD, labels: "off" }));
 
     expect(left.x).toBeGreaterThanOrEqual(0);
   });
 
   it("keeps a long name at the right corner inside the picture", () => {
-    const labels = below(screenLabels({ names: NAMES, readouts: CENSUS_HELD, labels: "off" }));
+    const labels = below(labelsOf({ readouts: CENSUS_HELD, labels: "off" }));
     const right = labels[labels.length - 1];
 
     expect(right.x + right.text.length * 8).toBeLessThanOrEqual(BORDER.across + FRAME_WIDTH);
+  });
+});
+
+describe("screenLabels at year end", () => {
+  it.each(["scores", "totals", "over"] as const)(
+    "names nothing beneath the status bar at %s, whose own word names its figures",
+    (phase) => {
+      expect(below(labelsOf({ phase }))).toEqual([]);
+    },
+  );
+
+  it("names nothing beneath the status bar while a side button is held", () => {
+    expect(below(labelsOf({ phase: "over", readouts: CENSUS_HELD }))).toEqual([]);
+  });
+
+  it("still names each island's governor above their island", () => {
+    const named = above(labelsOf({ phase: "over" })).map((label) => label.text);
+
+    expect(named).toEqual(["ADA", "UTOPUS"]);
   });
 });
 

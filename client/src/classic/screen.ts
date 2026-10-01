@@ -1,4 +1,4 @@
-import { CARD_PIXELS, COLOURS, SIDES, type Side } from "@utopia/engine";
+import { CARD_PIXELS, COLOURS, SIDES, type GamePhase, type Side } from "@utopia/engine";
 import { PALETTE_WORDS, SIDE_COLOURS } from "../art/palette.js";
 import { glyphRows } from "../art/pixel-font.js";
 import { FRAME_HEIGHT, FRAME_WIDTH } from "./pixel-frame.js";
@@ -47,18 +47,35 @@ export interface LabelScene {
   readonly names: Readonly<Record<Side, string>>;
   readonly readouts: Readouts;
   readonly labels: "on" | "off";
+  readonly phase: GamePhase;
 }
+
+/**
+ * What the border names beneath the status bar: its figures while the game is played; nothing at
+ * year end, when the bar shows SCORES or TOTALS between the corners and so names them itself.
+ */
+const BENEATH_THE_BAR: Readonly<Record<GamePhase, (scene: LabelScene) => ScreenLabel[]>> = {
+  ready: figureLabels,
+  playing: figureLabels,
+  scores: () => [],
+  totals: () => [],
+  over: () => [],
+};
 
 /**
  * The words in the border: with the labels on, what each of the status bar's figures is and each
  * island's governor; whatever the setting, what a corner shows while a side button is held.
  */
 export function screenLabels(scene: LabelScene): ScreenLabel[] {
-  const on = scene.labels === "on";
-  const holding = SIDES.some((side) => scene.readouts[side] !== "gold");
-  const middles = on && !holding ? middleLabels() : [];
-  const words = [...(on ? islandLabels(scene.names) : []), ...cornerLabels(scene), ...middles];
+  const governors = scene.labels === "on" ? islandLabels(scene.names) : [];
+  const words = [...governors, ...BENEATH_THE_BAR[scene.phase](scene)];
   return words.sort((first, second) => first.y - second.y || first.x - second.x);
+}
+
+function figureLabels(scene: LabelScene): ScreenLabel[] {
+  const holding = SIDES.some((side) => scene.readouts[side] !== "gold");
+  const middles = scene.labels === "on" && !holding ? middleLabels() : [];
+  return [...cornerLabels(scene), ...middles];
 }
 
 function islandLabels(names: Readonly<Record<Side, string>>): ScreenLabel[] {

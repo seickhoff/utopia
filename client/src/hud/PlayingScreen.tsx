@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import type { SoundSetting, ViewMode } from "../settings/game-setup-store.js";
 import type { ScreenProps } from "./App.js";
 import { BuildMenu } from "./BuildMenu.js";
+import { KeyStrip } from "./KeyStrip.js";
 import { LeaveButton } from "./LeaveButton.js";
 import { OnlineNotice } from "./OnlineNotice.js";
 import type { ClockViewModel, PanelViewModel } from "./game-view.js";
@@ -27,7 +28,10 @@ export function PlayingScreen(props: ScreenProps) {
   );
 }
 
-/** The 3D view: both islands' figures and the clock along the top, the year's report beside. */
+/**
+ * The 3D view: both islands' figures and the clock along the top, the year's report beside, and
+ * the keys along the bottom.
+ */
 function ModernFrame({ view, actions }: ScreenProps) {
   const [left, right] = view.hud.panels;
   return (
@@ -38,6 +42,7 @@ function ModernFrame({ view, actions }: ScreenProps) {
         {right && <IslandPanel panel={right} mine={view.hud.mine === "right"} />}
       </header>
       <YearEndPanel yearEnd={view.yearEnd} />
+      <KeyStrip />
     </>
   );
 }
@@ -59,7 +64,7 @@ function BoardNotice(props: { message: string }) {
   );
 }
 
-function IslandPanel(props: { panel: PanelViewModel; mine: boolean }) {
+export function IslandPanel(props: { panel: PanelViewModel; mine: boolean }) {
   const { panel } = props;
   return (
     <section className={`island-panel side-${panel.side}${props.mine ? " mine" : ""}`}>
@@ -93,10 +98,14 @@ const SOUND_TOGGLE: Readonly<Record<SoundSetting, string>> = {
   off: "Sound on (M)",
 };
 
-interface ClockProps {
-  readonly clock: ClockViewModel;
+interface ToggleProps {
   readonly setup: { readonly view: ViewMode; readonly sound: SoundSetting };
-  readonly actions: { toggleView(): void; toggleSound(): void; leaveGame(): void };
+  readonly actions: { toggleView(): void; toggleSound(): void };
+}
+
+interface ClockProps extends ToggleProps {
+  readonly clock: ClockViewModel;
+  readonly actions: ToggleProps["actions"] & { leaveGame(): void };
 }
 
 function Clock({ clock, setup, actions }: ClockProps) {
@@ -105,16 +114,25 @@ function Clock({ clock, setup, actions }: ClockProps) {
       <span className="year">{clock.year}</span>
       <span className="time">{clock.time}</span>
       <div className="toggles">
-        <button className="view-toggle" onClick={actions.toggleView}>
-          {OTHER_VIEW[setup.view]}
-        </button>
-        <button className="view-toggle" onClick={actions.toggleSound}>
-          {SOUND_TOGGLE[setup.sound]}
-        </button>
+        <ViewToggles setup={setup} actions={actions} />
         <LeaveButton className="view-toggle" onLeave={actions.leaveGame}>
           Leave
         </LeaveButton>
       </div>
     </div>
+  );
+}
+
+/** The other view, and the sound on or off. */
+export function ViewToggles({ setup, actions }: ToggleProps) {
+  return (
+    <>
+      <button className="view-toggle" onClick={actions.toggleView}>
+        {OTHER_VIEW[setup.view]}
+      </button>
+      <button className="view-toggle" onClick={actions.toggleSound}>
+        {SOUND_TOGGLE[setup.sound]}
+      </button>
+    </>
   );
 }

@@ -28,16 +28,18 @@ const TURN_STEP_SECONDS = 5;
 const NAME_LENGTH = 9;
 
 /**
- * The title: the cartridge's own screen beside the governor's office, where a term is set up
- * and taken, alone, against the computer, or against someone online. It all fits one screen.
+ * The title: the governor's office, made as the cartridge's keypad overlay with the game's name
+ * across its top, laid over the cartridge's own screen. There a term is set up and taken, alone,
+ * against the computer, or against someone online. It all fits one screen.
  */
 export function TitleScreen({ view, actions }: ScreenProps) {
   const named = isNamed(view.setup);
   return (
     <main className="title-screen">
-      <TitleHero picture={view.titlePicture} />
+      <TitleBackdrop picture={view.titlePicture} />
+      <Tagline />
       <section className="office" aria-label="Take office">
-        <header className="office-title">The governor's office</header>
+        <OverlayHead />
         <SetupForm setup={view.setup} onChange={actions.changeSetup} />
         <button className="key take-office" onClick={actions.play} disabled={!named}>
           Take office
@@ -52,22 +54,34 @@ export function TitleScreen({ view, actions }: ScreenProps) {
   );
 }
 
-function TitleHero({ picture }: { picture: string }) {
+function Tagline() {
   return (
-    <section className="title-hero">
+    <p className="tagline">
+      Govern your island. Feed, house and employ your people and keep them happy, or rebels will
+      rise in paradise.
+    </p>
+  );
+}
+
+/** A moment of play as the television showed it, large and dimmed behind the overlay. */
+function TitleBackdrop({ picture }: { picture: string }) {
+  if (picture === "") return <></>;
+  return (
+    <figure className="tv title-backdrop">
+      <img src={picture} alt="A moment of play on the Intellivision: the two islands at sea" />
+    </figure>
+  );
+}
+
+/** The top of the overlay, where the cartridge's own overlay printed the game's name. */
+function OverlayHead() {
+  return (
+    <header className="overlay-head">
       <h1 className="logo">
         <PixelText text="UTOPIA" />
       </h1>
-      <p className="tagline">
-        Govern your island. Feed, house and employ your people and keep them happy, or rebels will
-        rise in paradise.
-      </p>
-      {picture !== "" && (
-        <figure className="tv">
-          <img src={picture} alt="A moment of play on the Intellivision: the two islands at sea" />
-        </figure>
-      )}
-    </section>
+      <p className="office-title">The governor's office</p>
+    </header>
   );
 }
 
@@ -218,28 +232,9 @@ function Choices<T extends string>({ legend, options, chosen, onChoose }: Choice
   );
 }
 
-const CONTROLS: readonly [keys: string, does: string][] = [
-  ["Click", "your land to build"],
-  ["1–9", "choose"],
-  ["Enter", "build"],
-  ["Arrows", "move"],
-  ["0", "boat"],
-  ["Esc", "clear"],
-  ["V", "view"],
-  ["M", "sound"],
-  ["L", "labels"],
-];
-
 function TitleFooter() {
   return (
     <footer className="title-footer">
-      <p className="controls-line">
-        {CONTROLS.map(([keys, does]) => (
-          <span key={keys}>
-            <kbd>{keys}</kbd> {does}
-          </span>
-        ))}
-      </p>
       <p className="credit">A tribute to Don Daglow's Utopia for the Intellivision, 1981</p>
     </footer>
   );

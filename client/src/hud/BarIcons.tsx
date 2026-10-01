@@ -2,7 +2,16 @@ import type { ReactElement } from "react";
 
 /** The pictures on the classic screen's side bars, drawn in the bar's ink. */
 export type BarIconName =
-  "keypad" | "labels" | "guide" | "log" | "cube" | "soundOn" | "soundOff" | "leave";
+  | "keypad"
+  | "labels"
+  | "guide"
+  | "log"
+  | "cube"
+  | "soundOn"
+  | "soundOff"
+  | "leave"
+  | "again"
+  | "title";
 
 const KEYS = [4, 10, 16].flatMap((x) => [4, 10, 16].map((y) => ({ x, y })));
 
@@ -32,6 +41,8 @@ const PATHS: Readonly<Record<BarIconName, () => ReactElement>> = {
   soundOn: () => <path d="M4 9h4l5-4v14l-5-4H4V9zm12 0a4 4 0 0 1 0 6m2.5-8.5a7.5 7.5 0 0 1 0 11" />,
   soundOff: () => <path d="M4 9h4l5-4v14l-5-4H4V9zm12.5 1l5 5m0-5l-5 5" />,
   leave: () => <path d="M14 4H6v16h8M10 12h10m-3-3l3 3-3 3" />,
+  again: () => <path d="M20 12a8 8 0 1 1-2.3-5.7M20 3.5V8h-4.5" />,
+  title: () => <path d="M3.5 11L12 4l8.5 7M6 9v11h12V9M10 20v-5h4v5" />,
 };
 
 export function BarIcon({ name }: { name: BarIconName }) {

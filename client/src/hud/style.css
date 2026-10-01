@@ -95,68 +95,31 @@ body[data-screen="title"] #stage {
 .screen-panel,
 .build-layer,
 .title-screen,
-.final-screen,
 .year-end {
   pointer-events: auto;
 }
 
-/* The title: the cartridge's own screen beside the governor's office, all on one screen */
+/* The title: the governor's office as a keypad overlay, laid over the cartridge's own screen */
 
 .title-screen {
   position: absolute;
   inset: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   grid-template-areas:
-    "hero office"
-    "footer footer";
-  align-items: center;
-  gap: clamp(10px, 2.2vh, 26px) clamp(24px, 4vw, 72px);
-  padding: clamp(14px, 3.2vh, 40px) clamp(20px, 5vw, 88px) clamp(10px, 2vh, 22px);
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse 60% 55% at 32% 48%, rgb(40 62 170 / 38%), transparent 70%),
-    radial-gradient(ellipse at 40% 30%, var(--night-2), var(--night) 70%);
-}
-
-.title-hero {
-  grid-area: hero;
-  display: grid;
+    "tagline"
+    "office"
+    "footer";
   justify-items: center;
-  align-content: center;
-  gap: clamp(10px, 2.2vh, 24px);
-  min-height: 0;
-  text-align: center;
+  align-items: center;
+  gap: clamp(10px, 2.2vh, 26px);
+  padding: clamp(14px, 3.2vh, 40px) clamp(16px, 5vw, 88px) clamp(10px, 2vh, 22px);
+  overflow: hidden;
+  background: radial-gradient(ellipse at 40% 30%, var(--night-2), var(--night) 70%);
 }
 
-.logo {
-  margin: 0;
-  padding: clamp(10px, 1.8vh, 18px) clamp(22px, 3vw, 40px);
-  border-radius: 18px;
-  background: var(--overlay-title);
-  box-shadow:
-    0 0 0 clamp(6px, 1vh, 10px) var(--overlay),
-    0 18px 50px rgb(0 0 0 / 50%);
-  color: #fff;
-  line-height: 0;
-}
-
-.logo .pixel-text {
-  display: block;
-  width: clamp(220px, 28vw, 440px);
-  height: auto;
-}
-
-.tagline {
-  max-width: 34em;
-  margin: 0;
-  color: var(--ink-dim);
-  font-size: clamp(14px, 1.9vh, 18px);
-  line-height: 1.45;
-}
-
-/* The picture, framed as the television showed it */
+/* The picture, framed as the television showed it: as large as the window allows, at half strength
+   behind the overlay */
 
 .tv {
   position: relative;
@@ -173,7 +136,7 @@ body[data-screen="title"] #stage {
 
 .tv img {
   display: block;
-  width: min(100%, calc(46vh * 360 / 228));
+  width: min(calc(100vw - 64px), calc((100vh - 64px) * 360 / 228));
   height: auto;
   aspect-ratio: 360 / 228;
   border-radius: 14px;
@@ -190,11 +153,22 @@ body[data-screen="title"] #stage {
   pointer-events: none;
 }
 
+.title-backdrop {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  opacity: 0.5;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
 /* The governor's office: the keypad overlay's own card, with the controller's black keys */
 
 .office {
   grid-area: office;
+  position: relative;
   display: grid;
+  width: min(100%, 440px);
   gap: clamp(8px, 1.4vh, 14px);
   max-height: 100%;
   padding: clamp(12px, 2vh, 18px) clamp(14px, 1.6vw, 20px) clamp(18px, 2.8vh, 28px);
@@ -207,14 +181,46 @@ body[data-screen="title"] #stage {
   color: var(--overlay-title);
 }
 
-.office-title {
-  padding: 8px 12px;
+.tagline {
+  grid-area: tagline;
+  position: relative;
+  max-width: 34em;
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(14px, 2vh, 18px);
+  line-height: 1.45;
+  text-align: center;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 70%);
+}
+
+/* The overlay's top: the game's name across its whole width, the office named beneath */
+
+.overlay-head {
+  display: grid;
+  gap: clamp(6px, 1vh, 10px);
+}
+
+.logo {
+  margin: 0;
+  padding: clamp(10px, 1.8vh, 16px) clamp(18px, 7%, 30px);
   border-radius: 10px;
   background: var(--overlay-title);
   color: #fff;
+  line-height: 0;
+}
+
+.logo .pixel-text {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.office-title {
+  margin: 0;
+  color: var(--overlay-title);
   font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
-  font-size: clamp(14px, 2vh, 18px);
-  letter-spacing: 0.08em;
+  font-size: clamp(12px, 1.7vh, 15px);
+  letter-spacing: 0.12em;
   text-align: center;
   text-transform: uppercase;
 }
@@ -374,25 +380,6 @@ body[data-screen="title"] #stage {
   font-size: clamp(15px, 2.2vh, 19px);
 }
 
-/* The final screen's buttons */
-
-.take-office {
-  padding: 14px 40px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--overlay);
-  color: var(--overlay-title);
-  font-weight: 800;
-  font-size: 20px;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 0 var(--overlay-shade);
-}
-
-.take-office:active {
-  transform: translateY(3px);
-  box-shadow: 0 3px 0 var(--overlay-shade);
-}
-
 .office-or {
   display: flex;
   align-items: center;
@@ -511,36 +498,16 @@ body[data-screen="title"] #stage {
   font-weight: 600;
 }
 
-/* Along the bottom: the controls in a line, and whose game this was */
+/* Along the bottom: whose game this was */
 
 .title-footer {
   grid-area: footer;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px 24px;
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
   color: var(--ink-dim);
   font-size: 12px;
-}
-
-.controls-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 0;
-}
-
-.controls-line kbd {
-  display: inline-block;
-  min-width: 1.6em;
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: #1c2350;
-  box-shadow: 0 2px 0 #0b0f2a;
-  color: var(--ink);
-  font: inherit;
-  font-weight: 700;
   text-align: center;
 }
 
@@ -549,20 +516,11 @@ body[data-screen="title"] #stage {
   opacity: 0.8;
 }
 
-/* A narrow window stacks the picture over the office, and may scroll */
+/* A narrow window lets the office and the footer run on, and scroll */
 @media (max-width: 900px) {
   .title-screen {
-    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
-    grid-template-areas:
-      "hero"
-      "office"
-      "footer";
     overflow-y: auto;
-  }
-
-  .tv img {
-    width: min(100%, 560px);
   }
 }
 
@@ -732,6 +690,21 @@ body[data-screen="title"] #stage {
   border-color: var(--overlay);
 }
 
+/* The 3D view's end of term: the verdict where the clock was */
+
+.clock.verdict .headline {
+  margin: 2px 0;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.view-toggle.again {
+  border-color: var(--overlay);
+  background: var(--overlay);
+  color: var(--overlay-title);
+  font-weight: 700;
+}
+
 /* The keypad overlay */
 
 .overlay {
@@ -889,10 +862,9 @@ body[data-screen="title"] #stage {
   text-align: center;
 }
 
-/* Year end and final score */
+/* Year end */
 
-.year-end,
-.final-card {
+.year-end {
   border: 1px solid var(--panel-edge);
   border-radius: 16px;
   background: rgba(21, 29, 73, 0.96);
@@ -916,8 +888,7 @@ body[data-screen="title"] #stage {
   font-size: 13px;
 }
 
-.year-end h2,
-.final-card h2 {
+.year-end h2 {
   margin: 0 0 12px;
   font-size: 20px;
   text-align: center;
@@ -949,34 +920,6 @@ body[data-screen="title"] #stage {
 
 .report td.side-right {
   color: var(--right);
-}
-
-.final-screen {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgba(10, 15, 44, 0.45);
-}
-
-.final-card {
-  min-width: 420px;
-  padding: 24px 30px;
-}
-
-.final-actions {
-  display: flex;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 20px;
-}
-
-.final-actions button:not(.take-office) {
-  padding: 12px 26px;
-  border: 1px solid var(--panel-edge);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--ink);
 }
 
 /* The quick-build menu: a ring of the nine choices round the clicked square */
@@ -1136,6 +1079,42 @@ body[data-view="diorama"] .year-end {
   width: 276px;
 }
 
+/* The 3D view's keys, in a line along the bottom of the picture */
+
+.key-strip {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 12px;
+  background: rgb(10 15 44 / 72%);
+  color: var(--ink-dim);
+  font-size: 12px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.key-strip kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  margin-right: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #1c2350;
+  box-shadow: 0 2px 0 #0b0f2a;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+}
+
 .board-notice {
   display: block;
   position: absolute;
@@ -1152,6 +1131,11 @@ body[data-view="diorama"] .year-end {
   transform: translateX(-50%);
   pointer-events: none;
   animation: notice-fade 4s ease-in forwards;
+}
+
+/* In the 3D view RAZZ is told above the keys */
+body[data-view="diorama"] .board-notice {
+  bottom: 64px;
 }
 
 @keyframes notice-fade {
@@ -1224,13 +1208,13 @@ body[data-view="diorama"] .year-end {
 /* The classic game as the television showed it: the picture alone, centred between black bars
    that hold its controls. The top bar and the keypad column belong to the 3D view. */
 
-body[data-screen="playing"][data-view="classic"] {
+body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] {
   --hud-top: 0px;
   --hud-right: var(--bar);
   background: #000;
 }
 
-body[data-screen="playing"][data-view="classic"] #stage {
+body:is([data-screen="playing"], [data-screen="final"])[data-view="classic"] #stage {
   left: var(--bar);
 }
 
@@ -1330,6 +1314,37 @@ body[data-screen="playing"][data-view="classic"] #stage {
 .hold-button:active {
   background: var(--overlay);
   color: var(--key-dark);
+}
+
+/* The end of the term, where the way out was: who won, another term, or the title */
+
+.end-group {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 80px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+}
+
+.end-verdict {
+  margin: 0 0 4px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.bar-button.again {
+  background: var(--overlay);
+  color: var(--overlay-title);
+}
+
+.bar-button.again:hover {
+  background: var(--overlay-shade);
+  color: var(--overlay-title);
 }
 
 .screen-panel {

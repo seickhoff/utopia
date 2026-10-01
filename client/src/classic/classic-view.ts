@@ -60,16 +60,20 @@ export class ClassicView {
 
   draw(frame: GameFrame): void {
     const readouts = this.setup.readouts();
-    this.paintBorder({ names: this.setup.names(), readouts, labels: this.setup.labels() });
+    const { phase } = frame.current;
+    this.paintBorder({ names: this.setup.names(), readouts, labels: this.setup.labels(), phase });
     composeFrame({ snapshot: frame.current, readouts }, this.pixels);
     new Uint32Array(this.playfield.data.buffer).set(this.pixels.pixels);
     this.context.putImageData(this.playfield, BORDER.across, BORDER.down);
   }
 
-  /** The border changes only when the labels are turned on or off, or a side button is held. */
+  /**
+   * The border changes only when the labels are turned on or off, a side button is held, or the
+   * year ends or play resumes.
+   */
   private paintBorder(scene: LabelScene): void {
-    const { labels, readouts, names } = scene;
-    const said = [labels, readouts.left, readouts.right, names.left, names.right].join(":");
+    const { labels, readouts, names, phase } = scene;
+    const said = [labels, readouts.left, readouts.right, names.left, names.right, phase].join(":");
     if (said === this.borderShown) return;
     this.borderShown = said;
     const image = this.context.createImageData(SCREEN_WIDTH, SCREEN_HEIGHT);

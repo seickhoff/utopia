@@ -44,14 +44,16 @@ export interface GameRunnerSetup {
   readonly menu: BuildMenu;
 }
 
-/** A game on the go, and how it is seen. */
+/** A game on the go, or just finished, and how it is seen. */
 interface Running {
   onFrame(nowMs: number): void;
   rename(names: Readonly<Record<Side, string>>): void;
+  /** Draws the game after the page has changed, if no frame is coming to draw it. */
+  redraw(): void;
 }
 
 /** Special Case: nothing being played. */
-const IDLE: Running = { onFrame: () => {}, rename: () => {} };
+const IDLE: Running = { onFrame: () => {}, rename: () => {}, redraw: () => {} };
 
 /** Special Case: who plays before any game has begun. */
 const NO_MATCH: Match = { mine: "left", names: { left: "", right: "" }, rivalled: false };
@@ -80,6 +82,7 @@ export class GameRunner {
     this.running = {
       onFrame: (nowMs) => this.playFrame({ session, hud, nowMs }),
       rename: (names) => hud.rename(names),
+      redraw: () => {},
     };
     this.setup.input.attach(session);
     this.setup.store.update({ screen: "playing" });
@@ -97,8 +100,13 @@ export class GameRunner {
     return this.current;
   }
 
-  onResize(): void {
+  /**
+   * The page has changed (its size, the view, the labels): the view is fitted to it again, and a
+   * finished game, which draws no more frames, is drawn again.
+   */
+  refresh(): void {
     this.setup.view.resize();
+    this.running.redraw();
   }
 
   private playFrame(moment: PlayMoment): void {
@@ -113,6 +121,7 @@ export class GameRunner {
 
   private finish(frame: GameFrame): void {
     this.stop();
+    this.running = { ...IDLE, redraw: () => this.setup.view.draw(frame) };
     const { mine, rivalled } = this.current;
     const final = presentFinal({ snapshot: frame.current, mine, rivalled });
     this.setup.store.update({ screen: "final", final });

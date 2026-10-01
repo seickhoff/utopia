@@ -234,7 +234,7 @@ function followTheStore(parts: Parts): void {
     document.body.dataset.screen = view.screen;
     document.body.dataset.view = view.setup.view;
     if (view.setup.view !== shownView) parts.views.use((shownView = view.setup.view));
-    parts.runner.onResize();
+    parts.runner.refresh();
   });
 }
 
@@ -264,7 +264,7 @@ function boot(): void {
   followTheStore(parts);
   joinFromTheAddress(parts);
   const actions = actionsFor(parts);
-  window.addEventListener("resize", () => parts.runner.onResize());
+  window.addEventListener("resize", () => parts.runner.refresh());
   window.addEventListener("keydown", (event) => {
     const typing = event.target instanceof HTMLInputElement;
     if (!event.repeat && !typing) SHORTCUTS[event.code]?.(actions);
