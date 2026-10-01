@@ -1,6 +1,6 @@
 {
   "framework": "vite",
   "installCommand": "npm ci",
-  "buildCommand": "npm run build:libraries && npm run build -w @utopia/client",
+  "buildCommand": "npm run build -w @utopia/engine && npm run build -w @utopia/ai && npm run build -w @utopia/protocol && npm run build -w @utopia/client",
   "outputDirectory": "client/dist"
 }

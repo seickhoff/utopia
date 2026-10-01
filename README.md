@@ -30,14 +30,18 @@ The client is a static site for **Vercel**; the game server is a Node service fo
 
 ### Game server on Railway
 
-1. New project, then **Deploy from GitHub repo** and choose this repository. `railway.json` sets the build, the start command and the health check; Railway supplies the port.
-2. Under **Settings → Networking**, generate a public domain, such as `utopia-server.up.railway.app`.
+1. New project, then **Deploy from GitHub repo** and choose this repository. Railway offers a service for each package: keep only **@utopia/server** and delete the rest.
+2. In that service's settings, leave **Root Directory** blank, the whole repository. `railway.json` sets the build (`npm run build:server`), the start command and the health check; Railway supplies the port.
+3. Under **Settings → Networking**, generate a public domain, such as `utopia-server.up.railway.app`.
 
 ### Client on Vercel
 
-1. **Add New → Project** and import this repository. `vercel.json` sets the build and output folder.
-2. Under **Settings → Environment Variables**, add `VITE_WS_URL` with the value `wss://<your Railway domain>/ws`, for Production and Preview.
-3. Redeploy, so the build picks the variable up.
+1. **Add New → Project** and import this repository. `vercel.json` builds each workspace by name, so the build works from any folder.
+2. Under **Settings → Build and Deployment**:
+   - **Root Directory**: leave it blank, the whole repository. Pointed at `client`, Vercel misses the shared packages and the root `vercel.json`.
+   - **Output Directory**: switch **Override** on and enter `client/dist`. The Vite preset otherwise looks for `dist` at the root.
+3. Under **Settings → Environment Variables**, add `VITE_WS_URL` with the value `wss://<your Railway domain>/ws`, for Production and Preview. It is built into the client, so set it before deploying.
+4. Redeploy.
 
 ## Layout
 
