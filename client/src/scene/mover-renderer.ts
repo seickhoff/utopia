@@ -19,12 +19,20 @@ import { landAt, type GroundReading } from "./ground-fit.js";
 import { fleetUnderWay, fleetWakes, type FleetKind } from "./fleets.js";
 import { cursorFrame } from "./item-kits.js";
 import type { KitStyle } from "./kit-style.js";
+import { pilotRing } from "./pilot-ring.js";
 import { rgb } from "./shapes.js";
 import { SIDE_STYLES } from "./town-layout.js";
 
 const PIRATE_SIZE = { width: 8, height: 4 };
 const CURSOR_LIFT = 0.03;
-/** The cursor is drawn over everything else, clouds and hills included, so it is never cut off. */
+/** The ring round a steered boat floats just over the water it sails on. */
+const RING_LIFT = 0.02;
+/** The ring lets more than half the sea show through: a hint at the boat, not a thing at sea. */
+const RING_OPACITY = 0.4;
+/**
+ * The cursor, and the ring round a steered boat, are drawn over everything else, clouds and hills
+ * included, so they are never cut off.
+ */
 const OVER_EVERYTHING = 10;
 /** Where the cursor looks for the highest land under its square: corners and middle. */
 const CURSOR_CORNERS = [
@@ -47,6 +55,8 @@ interface FleetMeshes {
 
 interface PilotMeshes {
   readonly cursor: Mesh;
+  /** Marks the boat under the governor's hand, in place of the cursor while they sail. */
+  readonly ring: Mesh;
   readonly boats: Readonly<Record<"fishingBoat" | "ptBoat", FleetMeshes>>;
 }
 
@@ -66,14 +76,17 @@ export class MoverRenderer {
       hull: new MeshLambertMaterial({ vertexColors: true }),
       wake: wakeMaterial(),
     };
-    const overlay = overlayMaterial();
     const addFleet = (fleet: { kind: FleetKind; style: KitStyle }) =>
       fleetMeshes({ scene, fleet, materials });
-    const addCursor = (geometry: BufferGeometry) =>
-      addHidden(scene, { mesh: new Mesh(geometry, overlay), order: OVER_EVERYTHING });
+    const addOverlay = (material: Material) => (geometry: BufferGeometry) =>
+      addHidden(scene, { mesh: new Mesh(geometry, material), order: OVER_EVERYTHING });
+    const marks = {
+      addCursor: addOverlay(overlayMaterial()),
+      addRing: addOverlay(ringMaterial()),
+    };
     this.pilots = {
-      left: pilotMeshes({ side: "left", addFleet, addCursor }),
-      right: pilotMeshes({ side: "right", addFleet, addCursor }),
+      left: pilotMeshes({ side: "left", addFleet, ...marks }),
+      right: pilotMeshes({ side: "right", addFleet, ...marks }),
     };
     this.pirates = Array.from({ length: MAX_PIRATES }, () =>
       addFleet({ kind: "pirate", style: PIRATE_STYLE }),
@@ -93,6 +106,8 @@ export class MoverRenderer {
     const { meshes, pilot, over } = shown;
     const centre = worldOfSprite(pilot, CARD_SIZE);
     meshes.cursor.visible = !over && pilot.mode === "cursor";
+    meshes.ring.visible = !over && pilot.mode === "sailing";
+    meshes.ring.position.set(centre.x, RING_LIFT, centre.z);
     meshes.boats.fishingBoat.hull.visible =
       !over && pilot.aboard === "fishingBoat" && pilot.mode !== "cursor";
     meshes.boats.ptBoat.hull.visible =
@@ -115,13 +130,17 @@ export class MoverRenderer {
 interface PilotBuild {
   readonly side: Side;
   readonly addFleet: (fleet: { kind: FleetKind; style: KitStyle }) => FleetMeshes;
+  /** Adds the cursor, drawn solid over everything else. */
   readonly addCursor: (geometry: BufferGeometry) => Mesh;
+  /** Adds the ring round a steered boat, drawn over everything else with the sea showing through. */
+  readonly addRing: (geometry: BufferGeometry) => Mesh;
 }
 
 function pilotMeshes(build: PilotBuild): PilotMeshes {
   const style = SIDE_STYLES[build.side];
   return {
     cursor: build.addCursor(trianglesGeometry(cursorFrame(style))),
+    ring: build.addRing(trianglesGeometry(pilotRing(style))),
     boats: {
       fishingBoat: build.addFleet({ kind: "fishingBoat", style }),
       ptBoat: build.addFleet({ kind: "ptBoat", style }),
@@ -160,6 +179,17 @@ function overlayMaterial(): MeshLambertMaterial {
   return new MeshLambertMaterial({
     vertexColors: true,
     transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+}
+
+/** Drawn over everything as the cursor is, but unlit, so the band is one even, faint colour. */
+function ringMaterial(): MeshBasicMaterial {
+  return new MeshBasicMaterial({
+    vertexColors: true,
+    transparent: true,
+    opacity: RING_OPACITY,
     depthTest: false,
     depthWrite: false,
   });
