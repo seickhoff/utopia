@@ -357,6 +357,20 @@ describe("Steerer under a finger", () => {
     expect([game.island().pilot.mode, pilotSquare(game)]).toEqual(["sailing", Square.at(9, 2)]);
   });
 
+  it("brings a boat home and docks it when a finger taps its own harbour, past the sand bars", () => {
+    const game = aSailingGame();
+    game.steerer.tap(clickOn(Square.at(9, 2)));
+    game.play(4);
+
+    game.steerer.tap(clickOn(HARBOURS.left));
+    game.play(6);
+
+    expect([game.occupantAt(HARBOURS.left), game.island().pilot.mode]).toEqual([
+      "fishingBoat",
+      "cursor",
+    ]);
+  });
+
   it("drops anchor when the boat itself is tapped, handing back the cursor", () => {
     const game = aSailingGame();
     const { x, y } = game.island().pilot;

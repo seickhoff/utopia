@@ -1,6 +1,7 @@
 import {
   BOAT_KEY,
   DISC_RELEASED,
+  HARBOURS,
   Navigator,
   PixelPoint,
   type DiscReading,
@@ -101,13 +102,16 @@ export class Steerer {
 
   /**
    * A finger's tap. A boat sails to where it taps, and stays out on the water there; a tap on the
-   * boat itself drops anchor and hands back the cursor. Anything else is as a click.
+   * player's own harbour brings the boat home and docks it, as a click does, the moment it slips
+   * in past the sand bars; a tap on the boat itself drops anchor and hands back the cursor.
+   * Anything else is as a click.
    */
   tap(click: BoardClick): void {
     if (!this.isSailing() || this.menu.isOpen()) return this.click(click);
     if (buysAtOnce(this.controller.selection())) return this.click(click);
     if (this.isOnBoat(click.point)) return this.disembark();
-    this.course = { point: click.point, then: "stop" };
+    const home = squareUnder(click.point) === HARBOURS[this.side];
+    this.course = { point: click.point, then: home ? "act" : "stop" };
   }
 
   /**
