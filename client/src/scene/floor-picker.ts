@@ -15,6 +15,7 @@ export class FloorPicker {
   private readonly ray = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly hit = new Vector3();
+  private readonly facing = new Vector3();
 
   constructor(private readonly view: { canvas: HTMLCanvasElement; camera: Camera }) {}
 
@@ -46,10 +47,23 @@ export class FloorPicker {
   wayAcross(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
     const from = this.floorAt(drag.from);
     const to = this.floorAt(drag.to);
-    if (from === "sky" || to === "sky") {
-      return { x: drag.to.clientX - drag.from.clientX, y: drag.to.clientY - drag.from.clientY };
-    }
+    if (from === "sky" || to === "sky") return this.onGlass(drag);
     return { x: to.x - from.x, y: to.z - from.z };
+  }
+
+  /**
+   * A drag as it lies on the glass, turned onto the board the way the camera is turned: rightward
+   * runs the way the camera's right does, and upward the way it looks across the sea.
+   */
+  private onGlass(drag: { from: ScreenPosition; to: ScreenPosition }): Way {
+    const [across, down] = [
+      drag.to.clientX - drag.from.clientX,
+      drag.to.clientY - drag.from.clientY,
+    ];
+    this.view.camera.getWorldDirection(this.facing);
+    const length = Math.hypot(this.facing.x, this.facing.z) || 1;
+    const [aheadX, aheadZ] = [this.facing.x / length, this.facing.z / length];
+    return { x: -aheadZ * across - aheadX * down, y: aheadX * across - aheadZ * down };
   }
 
   /** Where a pointer's ray meets the floor, or "sky" if it passes over the horizon. */

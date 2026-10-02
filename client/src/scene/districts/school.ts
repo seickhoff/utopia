@@ -1,5 +1,6 @@
 import type { KitStyle } from "../kit-style.js";
-import { box, gableRoof, merge, rgb, type Triangles } from "../shapes.js";
+import { vaultRoof } from "../roof-shapes.js";
+import { box, merge, rgb, walls, type Triangles } from "../shapes.js";
 import type { District } from "./district.js";
 import {
   block,
@@ -7,74 +8,80 @@ import {
   extent,
   flag,
   ground,
-  marking,
   point,
   tree,
   type BlockSpec,
   type Spot,
 } from "./props.js";
+import { ballpark, runningTrack } from "./sports.js";
 
 const BRICK = rgb("#b35a3f");
 const SLATE = rgb("#666b73");
 const GYM_WALLS = rgb("#d6d0c2");
-const GYM_ROOF = rgb("#7b8794");
-const TRACK = rgb("#b65a4b");
-const TURF = rgb("#5f9748");
-const PAINT = rgb("#ecece6");
+const GYM_ROOF = rgb("#8a96a3");
 const PLAY_SURFACE = rgb("#d6b27c");
 const ASPHALT = rgb("#55585e");
 const BUS_YELLOW = rgb("#f2c230");
 const PLAY_COLOURS = [rgb("#d8453b"), rgb("#3a78c2"), rgb("#f0c93a")];
 
 const MAIN_HALL: BlockSpec = {
-  spot: [-0.14, -0.26],
-  size: [0.4, 0.11, 0.14],
+  spot: [-0.12, -0.34],
+  size: [0.42, 0.1, 0.12],
   walls: BRICK,
   roof: SLATE,
   storeys: 2,
 };
 const CLASS_WING: BlockSpec = {
-  spot: [-0.28, -0.04],
-  size: [0.12, 0.09, 0.3],
+  spot: [-0.27, -0.18],
+  size: [0.11, 0.08, 0.2],
   walls: BRICK,
   roof: SLATE,
   storeys: 2,
 };
-const SPORTS_FIELD: Spot = [0.16, 0.24];
-
-const PLAY_THINGS: readonly Spot[] = [
-  [-0.34, 0.27],
-  [-0.27, 0.34],
-  [-0.24, 0.26],
+const GYM: Spot = [0.29, -0.31];
+const GYM_SIZE = [0.2, 0.05, 0.15] as const;
+const BUS_LOOP: Spot = [0.04, -0.18];
+const BUSES: readonly Spot[] = [
+  [-0.01, -0.2],
+  [-0.01, -0.165],
+  [0.085, -0.2],
 ];
-
+const PLAYGROUND: Spot = [-0.4, -0.15];
+const PLAY_THINGS: readonly Spot[] = [
+  [-0.42, -0.19],
+  [-0.38, -0.13],
+  [-0.415, -0.1],
+];
 const TREES: readonly Spot[] = [
-  [0.43, -0.42],
-  [0.43, -0.02],
-  [-0.44, 0.12],
-  [-0.44, 0.44],
-  [0.0, 0.42],
-  [0.44, 0.44],
+  [0.43, -0.1],
+  [0.31, -0.13],
+  [-0.1, -0.03],
+  [0.05, -0.01],
+  [-0.44, 0.02],
+  [-0.44, 0.42],
+  [0.0, 0.43],
 ];
 
 /**
- * A school's grounds: a brick hall and classroom wing with its flag, a gymnasium, a running track
- * round a playing field, a playground, and the yellow buses waiting in the bus loop.
+ * A school's grounds: a brick hall and classroom wing with the side's flag out front, a vaulted
+ * gymnasium, the yellow buses in the bus loop, a playground, a running track round a football
+ * pitch, and a baseball diamond.
  */
 export function schoolDistrict(style: KitStyle): District {
+  const diamond = ballpark([0.12, 0.36]);
   return {
     decals: [
-      ground({ spot: SPORTS_FIELD, size: [0.42, 0.26], colour: TRACK }),
-      marking({ spot: SPORTS_FIELD, size: [0.32, 0.16], colour: TURF }),
-      ground({ spot: [-0.3, 0.3], size: [0.16, 0.14], colour: PLAY_SURFACE }),
-      ground({ spot: [-0.07, 0.05], size: [0.2, 0.09], colour: ASPHALT }),
+      ...runningTrack({ centre: [-0.19, 0.2], reach: 0.07, radius: 0.085 }),
+      ...diamond.decals,
+      ground({ spot: PLAYGROUND, size: [0.09, 0.13], colour: PLAY_SURFACE }),
+      ground({ spot: BUS_LOOP, size: [0.24, 0.1], colour: ASPHALT }),
     ],
     structures: [
       schoolhouse(style),
       gymnasium(),
-      ...buses(),
+      ...BUSES.map((spot) => coach({ spot, turn: 0, colour: BUS_YELLOW })),
       ...playground(),
-      box({ base: point(SPORTS_FIELD, 0), size: extent([0.004, 0.012, 0.16]), colour: PAINT }),
+      ...diamond.structures,
       ...TREES.map((spot) => tree(spot, 0.05)),
     ],
   };
@@ -85,14 +92,8 @@ function schoolhouse(style: KitStyle): Triangles {
   return merge([
     block(MAIN_HALL),
     block(CLASS_WING),
-    flag({ spot: [0.1, -0.14], height: 0.2, colour: style.accent }),
+    flag({ spot: [0.13, -0.24], height: 0.2, colour: style.accent }),
   ]);
-}
-
-function buses(): Triangles[] {
-  return [-0.12, -0.07, -0.02].map((x) =>
-    coach({ spot: [x, 0.05], turn: Math.PI / 2, colour: BUS_YELLOW }),
-  );
 }
 
 function playground(): Triangles[] {
@@ -101,19 +102,16 @@ function playground(): Triangles[] {
   );
 }
 
+/** The gymnasium under its vaulted roof. */
 function gymnasium(): Triangles {
+  const [width, height, depth] = GYM_SIZE;
   return merge([
-    block({
-      spot: [0.26, -0.26],
-      size: [0.2, 0.09, 0.16],
-      walls: GYM_WALLS,
-      roof: GYM_ROOF,
-      storeys: 0,
-    }),
-    gableRoof({
-      base: point([0.26, -0.26], 0.09),
-      size: extent([0.21, 0.03, 0.17]),
+    walls({ base: point(GYM, 0), size: extent(GYM_SIZE), colour: GYM_WALLS }),
+    vaultRoof({
+      base: point(GYM, height),
+      size: extent([width + 0.006, 0.05, depth + 0.006]),
       colour: GYM_ROOF,
+      segments: 4,
     }),
   ]);
 }

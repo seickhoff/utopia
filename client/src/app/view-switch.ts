@@ -7,6 +7,8 @@ import type { GameFrame } from "../session/game-session.js";
 export interface ModeView {
   draw(frame: GameFrame): void;
   resize(): void;
+  /** Whether the camera has caught up with where the player turned it; a view without one has. */
+  isAtRest(): boolean;
   show(): void;
   hide(): void;
   romPointAt(position: ScreenPosition): PixelPoint | "outside";
@@ -17,6 +19,8 @@ export interface ModeView {
   trackPointer(position: ScreenPosition): void;
   /** The mouse has left the board, or no longer plays it. */
   losePointer(): void;
+  /** Which way the screen's up looks across the board, degrees clockwise from north: the arrows steer by it. */
+  bearing(): number;
 }
 
 /** The classic screen or the diorama, one at a time: the other draws nothing until switched to. */
@@ -42,6 +46,10 @@ export class ViewSwitch {
     this.views[this.mode].resize();
   }
 
+  isAtRest(): boolean {
+    return this.views[this.mode].isAtRest();
+  }
+
   romPointAt(position: ScreenPosition): PixelPoint | "outside" {
     return this.views[this.mode].romPointAt(position);
   }
@@ -60,5 +68,9 @@ export class ViewSwitch {
 
   losePointer(): void {
     this.views[this.mode].losePointer();
+  }
+
+  bearing(): number {
+    return this.views[this.mode].bearing();
   }
 }

@@ -8,6 +8,7 @@ import {
   Scene,
   WebGLRenderer,
 } from "three";
+import type { CameraFocus } from "../board/camera-focus.js";
 import { CARD_SIZE, worldOfSprite } from "../board/rom-space.js";
 import type { GameFrame } from "../session/game-session.js";
 import {
@@ -17,6 +18,7 @@ import {
   type Point3,
   type Shot,
 } from "./camera-framing.js";
+import { CameraEase, type CameraState } from "./camera-ease.js";
 import { CloudShadows } from "./cloud-shadows.js";
 import { FishRenderer } from "./fish-renderer.js";
 import type { ScreenPosition } from "../board/screen-position.js";
@@ -38,13 +40,21 @@ export interface Area {
   readonly height: number;
 }
 
-/** How the player wants to look at the islands, and whose cursor or boat to follow in close. */
+/** How the player wants to look at the islands, and what to come closer to. */
 export interface CameraAim {
   readonly pitchDegrees: number;
-  /** 1 shows the whole sea; larger comes closer. */
+  /** Which way across the sea the camera looks: 0 north, as the cartridge's screen does. */
+  readonly headingDegrees: number;
+  /** 1 shows the whole sea; larger comes closer to the focus. */
   readonly zoom: number;
+  /** Whose cursor or boat the camera follows, and whose mouse the board shows. */
   readonly follow: Side;
+  /** That cursor or boat, or a point the player looks at instead. */
+  readonly focus: CameraFocus;
 }
+
+/** How far the camera is tilted down, and which way round it is turned. */
+type ViewTurning = Pick<CameraState, "pitchDegrees" | "headingDegrees">;
 
 export interface DioramaSetup {
   readonly canvas: HTMLCanvasElement;
@@ -52,16 +62,6 @@ export interface DioramaSetup {
   readonly aim: () => CameraAim;
 }
 
-/** The camera as it is drawn this frame: easing toward what the player asked for. */
-interface CameraState {
-  pitchDegrees: number;
-  zoom: number;
-  x: number;
-  z: number;
-}
-
-/** How quickly the camera catches up with a new tilt, zoom or target: most of the way in a quarter second. */
-const CAMERA_EASE_PER_SECOND = 9;
 /** Far enough to see the horizon when the view is tilted right over. */
 const FAR_PLANE = 5000;
 
@@ -95,17 +95,17 @@ export class DioramaView {
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(DIORAMA_POSE.fovDegrees, 1, 0.5, FAR_PLANE);
   private readonly renderers: Renderers;
-  private readonly shown: CameraState = {
+  private readonly ease = new CameraEase({
     pitchDegrees: DIORAMA_POSE.pitchDegrees,
+    headingDegrees: DIORAMA_POSE.headingDegrees,
     zoom: 1,
     x: DIORAMA_POSE.target.x,
     z: DIORAMA_POSE.target.z,
-  };
+  });
   private whole: { key: string; shot: Shot } = {
     key: "",
     shot: { target: DIORAMA_POSE.target, distance: 1 },
   };
-  private lastDrawn = performance.now();
   private readonly picker: FloorPicker;
   /** Where the mouse is on the page while it plays the board. */
   private mouse: ScreenPosition | "away" = "away";
@@ -129,8 +129,13 @@ export class DioramaView {
     landUse.update(snapshot.board);
     sea.update(seconds);
     town.update(snapshot.board);
-    movers.update(snapshot);
-    weather.update({ sprites: snapshot.sprites, seconds });
+    movers.update(snapshot, seconds);
+    weather.update({
+      sprites: snapshot.sprites,
+      seconds,
+      events: frame.events,
+      eye: this.camera.position,
+    });
     fish.update({ sprites: snapshot.sprites, seconds });
     this.showPointer(snapshot);
     this.renderer.render(this.scene, this.camera);
@@ -145,6 +150,11 @@ export class DioramaView {
   losePointer(): void {
     this.mouse = "away";
     this.renderers.pointer.putAway();
+  }
+
+  /** Which way the screen's up looks across the board now, as the camera has turned so far. */
+  bearing(): number {
+    return this.ease.current().headingDegrees;
   }
 
   setPixelRatio(ratio: number): void {
@@ -167,56 +177,69 @@ export class DioramaView {
     this.renderer.setSize(room.width, room.height, false);
     this.camera.aspect = room.width / Math.max(1, room.height);
     this.camera.updateProjectionMatrix();
-    const shot = this.wholeSea(this.shown.pitchDegrees);
-    this.place({ pitchDegrees: this.shown.pitchDegrees, shot });
+    const shown = this.ease.current();
+    this.place({ angle: shown, shot: this.wholeSea(shown) });
   }
 
-  /**
-   * Eases the camera toward the player's tilt and zoom. Zoomed out it shows the whole sea; coming
-   * closer, it looks more and more at the player's cursor or boat, so it never needs panning.
-   */
+  /** Whether the camera has caught up with where the player turned it. */
+  isAtRest(): boolean {
+    return this.ease.isAtRest();
+  }
+
+  /** Eases the camera toward the player's tilt and zoom, and the point it comes closer to. */
   private aim(snapshot: GameSnapshot): void {
-    const goal = this.setup.aim();
-    const ease = this.easing();
-    const shown = this.shown;
-    shown.pitchDegrees += (goal.pitchDegrees - shown.pitchDegrees) * ease;
-    shown.zoom += (goal.zoom - shown.zoom) * ease;
-    const whole = this.wholeSea(shown.pitchDegrees);
-    const focus = worldOfSprite(snapshot.islands[goal.follow].pilot, CARD_SIZE);
-    const closeness = 1 - 1 / shown.zoom;
-    shown.x += (whole.target.x + (focus.x - whole.target.x) * closeness - shown.x) * ease;
-    shown.z += (whole.target.z + (focus.z - whole.target.z) * closeness - shown.z) * ease;
+    this.ease.step({ goal: this.goal(snapshot), nowMs: performance.now() });
+    const shown = this.ease.current();
+    const whole = this.wholeSea(shown);
     const shot = {
       target: { x: shown.x, y: 0, z: shown.z },
       distance: whole.distance / shown.zoom,
     };
-    this.place({ pitchDegrees: shown.pitchDegrees, shot });
+    this.place({ angle: shown, shot });
   }
 
-  /** The shot showing the whole sea at this tilt, worked out again only when tilt or shape changes. */
-  private wholeSea(pitchDegrees: number): Shot {
-    const key = `${pitchDegrees.toFixed(2)}:${this.camera.aspect.toFixed(4)}`;
+  /**
+   * Where the player wants the camera. Zoomed out it shows the whole sea; coming closer, it looks
+   * more and more at its focus (the player's cursor or boat, or a point looked at), so it never
+   * needs panning.
+   */
+  private goal(snapshot: GameSnapshot): CameraState {
+    const asked = this.setup.aim();
+    const shown = this.ease.current();
+    const whole = this.wholeSea(shown).target;
+    const pilot = snapshot.islands[asked.follow].pilot;
+    const focus = worldOfSprite(asked.focus.pointFor(pilot), CARD_SIZE);
+    const closeness = 1 - 1 / shown.zoom;
+    return {
+      pitchDegrees: asked.pitchDegrees,
+      headingDegrees: asked.headingDegrees,
+      zoom: asked.zoom,
+      x: whole.x + (focus.x - whole.x) * closeness,
+      z: whole.z + (focus.z - whole.z) * closeness,
+    };
+  }
+
+  /**
+   * The shot showing the whole sea at this tilt and heading, worked out again only when the tilt,
+   * the heading or the screen's shape changes.
+   */
+  private wholeSea(angle: ViewTurning): Shot {
+    const { pitchDegrees, headingDegrees } = angle;
+    const key = `${pitchDegrees.toFixed(2)}:${headingDegrees.toFixed(2)}:${this.camera.aspect.toFixed(4)}`;
     if (key === this.whole.key) return this.whole.shot;
-    const pose = { ...DIORAMA_POSE, pitchDegrees };
+    const pose = { ...DIORAMA_POSE, pitchDegrees, headingDegrees };
     const framing = { aspect: this.camera.aspect, corners: BOARD_CORNERS, margin: FRAMING_MARGIN };
     this.whole = { key, shot: frameShot(pose, framing) };
     return this.whole.shot;
   }
 
-  private place(view: { pitchDegrees: number; shot: Shot }): void {
+  private place(view: { angle: ViewTurning; shot: Shot }): void {
     const { target, distance } = view.shot;
-    const pose = { ...DIORAMA_POSE, pitchDegrees: view.pitchDegrees, target };
+    const { pitchDegrees, headingDegrees } = view.angle;
+    const pose = { ...DIORAMA_POSE, pitchDegrees, headingDegrees, target };
     const eye = cameraPosition(pose, distance);
     this.camera.position.set(eye.x, eye.y, eye.z);
     this.camera.lookAt(target.x, target.y, target.z);
-  }
-
-  /** The share of the way to its goal the camera moves this frame, whatever the frame rate. */
-  private easing(): number {
-    const now = performance.now();
-    const seconds = Math.min(0.1, Math.max(0, (now - this.lastDrawn) / 1000));
-    this.lastDrawn = now;
-    return 1 - Math.exp(-seconds * CAMERA_EASE_PER_SECOND);
   }
 
   /** The sprite point under a pointer, where its ray meets the playfield; "outside" off it. */

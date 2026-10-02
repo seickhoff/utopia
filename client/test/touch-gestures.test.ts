@@ -87,6 +87,41 @@ describe("TouchGestures with two fingers", () => {
     expect(view.current().pitchDegrees).toBeCloseTo(LEVEL - 10);
   });
 
+  it("turns the view round as two fingers twist, the board turning with them as a map does", () => {
+    const { gestures, view } = aTouchBoard();
+    gestures.down(finger(1, 100, 200));
+    gestures.down(finger(2, 300, 200));
+
+    gestures.move(
+      finger(2, 100 + 200 * Math.cos(Math.PI / 4.5), 200 + 200 * Math.sin(Math.PI / 4.5)),
+    );
+
+    expect(view.current().headingDegrees).toBeCloseTo(-(40 - 12), 6);
+  });
+
+  it("keeps turning with the fingers once they have started, however little they twist", () => {
+    const { gestures, view } = aTouchBoard();
+    gestures.down(finger(1, 100, 200));
+    gestures.down(finger(2, 300, 200));
+    gestures.move(finger(2, 100, 400));
+
+    gestures.move(
+      finger(2, 100 + 200 * Math.cos(Math.PI / 2 - 0.05), 200 + 200 * Math.sin(Math.PI / 2 - 0.05)),
+    );
+
+    expect(view.current().headingDegrees).toBeCloseTo(-(90 - 12) + (0.05 * 180) / Math.PI, 6);
+  });
+
+  it("leaves the view facing as it was for the slight twist a pinch or a tilt gives", () => {
+    const { gestures, view } = aTouchBoard();
+    gestures.down(finger(1, 100, 200));
+    gestures.down(finger(2, 300, 200));
+
+    gestures.move(finger(2, 100 + 300 * Math.cos(0.1), 200 + 300 * Math.sin(0.1)));
+
+    expect(view.current().headingDegrees).toBe(0);
+  });
+
   it("drags nothing while the camera turns", () => {
     const { gestures, drags } = aTouchBoard();
     gestures.down(finger(1, 100, 100));

@@ -6,7 +6,7 @@ import { commandForKey } from "../src/input/key-map.js";
 import { NO_OPPONENT } from "../src/session/local-game-session.js";
 import { localGameSession } from "../src/session/local-game.js";
 
-function aController() {
+function aController(bearing: () => number = () => 0) {
   const session = localGameSession({
     options: { rounds: 3, roundSeconds: 30 },
     side: "left",
@@ -15,7 +15,10 @@ function aController() {
   });
   const discs: DiscReading[] = [];
   const buttons: string[][] = [];
-  const controller = new HandController((held: ReadonlySet<SideButton>) => buttons.push([...held]));
+  const controller = new HandController(
+    (held: ReadonlySet<SideButton>) => buttons.push([...held]),
+    bearing,
+  );
   controller.plugInto({
     side: session.side,
     frame: () => session.frame(),
@@ -46,6 +49,25 @@ describe("HandController", () => {
     controller.steer(EAST);
 
     expect(controller.heading()).toBe(EAST);
+  });
+
+  it("steers by the screen: held up, the disc points the way the turned view looks", () => {
+    const { press, discs } = aController(() => 90);
+
+    press("ArrowUp");
+
+    expect(discs).toEqual([4]);
+  });
+
+  it("keeps a held arrow steering the screen's way as the view turns under it", () => {
+    let bearing = 0;
+    const { controller, press, discs } = aController(() => bearing);
+    press("ArrowUp");
+    bearing = 180;
+
+    controller.faceTheView();
+
+    expect(discs).toEqual([0, 8]);
   });
 
   it("chooses the item a digit stands for", () => {

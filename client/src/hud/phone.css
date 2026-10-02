@@ -269,7 +269,11 @@ body[data-hold="upright"] .turn-notice {
   }
 
   .island-panel dl {
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .stat {
+    min-width: 42px;
   }
 
   .stat dt {

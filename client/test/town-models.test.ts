@@ -20,7 +20,7 @@ describe("TownModels", () => {
   it("joins every square's model into one set of buffers", () => {
     const models = new TownModels(cube);
 
-    expect(models.build(squares()).positions.length).toBe(3 * 12 * 9);
+    expect(models.build(squares()).positions.length).toBe(3 * 10 * 9);
   });
 
   it("models only the squares that changed since the last build", () => {
@@ -39,10 +39,11 @@ describe("TownModels", () => {
 
   it("gives every triangle a normal facing out of it", () => {
     const { normals } = new TownModels(cube).build(squares().slice(0, 1));
-    const ups = Array.from({ length: normals.length / 3 }, (_, index) => normals[index * 3 + 1]);
+    const facing = (axis: number, way: number) =>
+      Array.from({ length: normals.length / 3 }, (_, index) => normals[index * 3 + axis]).filter(
+        (component) => component === way,
+      ).length;
 
-    expect([ups.filter((up) => up === 1).length, ups.filter((up) => up === -1).length]).toEqual([
-      6, 6,
-    ]);
+    expect([facing(1, 1), facing(0, 1), facing(0, -1)]).toEqual([6, 6, 6]);
   });
 });

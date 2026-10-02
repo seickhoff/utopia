@@ -71,7 +71,10 @@ function buildParts(): Parts {
   const store = new GameStore();
   const setups = new GameSetupStore(new BrowserStore(() => window.localStorage));
   let readouts = GOLD_READOUTS;
-  const controller = new HandController((held) => (readouts = readoutsWhileHeld(held)));
+  const controller = new HandController(
+    (held) => (readouts = readoutsWhileHeld(held)),
+    () => views.bearing(),
+  );
   const menu = new BuildMenu();
   const menuKeys = new BuildMenuControls(controller, menu);
   const hands = { controller, menu, menuKeys };

@@ -16,8 +16,11 @@ import {
 import { CARD_SIZE, worldOfSprite, type WorldPoint } from "../board/rom-space.js";
 import { BoatTrack } from "./boat-track.js";
 import { trianglesGeometry } from "./geometry.js";
-import { landAt, type GroundReading } from "./ground-fit.js";
-import { fleetUnderWay, fleetWakes, type FleetKind } from "./fleets.js";
+import { Drape, DrapedMesh } from "./drape.js";
+import type { GroundReading } from "./ground-fit.js";
+import { FleetPlay, berthedGeometry } from "./fleet-play.js";
+import { wakeGeometry, wakeMaterial } from "./fleet-wakes.js";
+import { berthedFleetUnderWay, fleetWakePatches, type FleetKind } from "./fleets.js";
 import { cursorFrame } from "./item-kits.js";
 import type { KitStyle } from "./kit-style.js";
 import { pilotRing } from "./pilot-ring.js";
@@ -25,7 +28,6 @@ import { rgb } from "./shapes.js";
 import { SIDE_STYLES } from "./town-layout.js";
 
 const PIRATE_SIZE = { width: 8, height: 4 };
-const CURSOR_LIFT = 0.03;
 /** The ring round a steered boat floats just over the water it sails on. */
 const RING_LIFT = 0.02;
 /** The ring lets more than half the sea show through: a hint at the boat, not a thing at sea. */
@@ -35,14 +37,6 @@ const RING_OPACITY = 0.4;
  * included, so they are never cut off.
  */
 const OVER_EVERYTHING = 10;
-/** Where the cursor looks for the highest land under its square: corners and middle. */
-const CURSOR_CORNERS = [
-  { x: -0.5, z: -0.5 },
-  { x: 0.5, z: -0.5 },
-  { x: 0, z: 0 },
-  { x: -0.5, z: 0.5 },
-  { x: 0.5, z: 0.5 },
-];
 const SINK_PER_FRAME = 0.04;
 /** Pirates fly no side's colour. */
 const PIRATE_STYLE: KitStyle = { accent: rgb("#2e2a33") };
@@ -56,7 +50,7 @@ interface FleetMeshes {
 }
 
 interface PilotMeshes {
-  readonly cursor: Mesh;
+  readonly cursor: DrapedMesh;
   /** Marks the boat under the governor's hand, in place of the cursor while they sail. */
   readonly ring: Mesh;
   readonly boats: Readonly<Record<"fishingBoat" | "ptBoat", FleetMeshes>>;
@@ -69,23 +63,13 @@ const HEADING_EASE = 0.12;
 export class MoverRenderer {
   private readonly pilots: Readonly<Record<Side, PilotMeshes>>;
   private readonly pirates: readonly FleetMeshes[];
+  private readonly play = new FleetPlay();
 
-  constructor(
-    scene: Scene,
-    private readonly ground: GroundReading,
-  ) {
-    const materials = {
-      hull: new MeshLambertMaterial({ vertexColors: true }),
-      wake: wakeMaterial(),
-    };
+  constructor(scene: Scene, ground: GroundReading) {
+    const materials = playing(this.play);
     const addFleet = (fleet: { kind: FleetKind; style: KitStyle }) =>
       fleetMeshes({ scene, fleet, materials });
-    const addOverlay = (material: Material) => (geometry: BufferGeometry) =>
-      addHidden(scene, { mesh: new Mesh(geometry, material), order: OVER_EVERYTHING });
-    const marks = {
-      addCursor: addOverlay(overlayMaterial()),
-      addRing: addOverlay(ringMaterial()),
-    };
+    const marks = overlays({ scene, ground });
     this.pilots = {
       left: pilotMeshes({ side: "left", addFleet, ...marks }),
       right: pilotMeshes({ side: "right", addFleet, ...marks }),
@@ -95,7 +79,9 @@ export class MoverRenderer {
     );
   }
 
-  update(snapshot: GameSnapshot): void {
+  /** Moves every cursor, boat and pirate to where the game has it; each boat's play is taken at this time. */
+  update(snapshot: GameSnapshot, seconds = 0): void {
+    this.play.advance(seconds);
     const over = snapshot.phase === "over";
     SIDES.forEach((side) =>
       this.showPilot({ meshes: this.pilots[side], pilot: snapshot.islands[side].pilot, over }),
@@ -107,36 +93,38 @@ export class MoverRenderer {
   private showPilot(shown: { meshes: PilotMeshes; pilot: PilotSnapshot; over: boolean }): void {
     const { meshes, pilot, over } = shown;
     const centre = worldOfSprite(pilot, CARD_SIZE);
-    meshes.cursor.visible = !over && pilot.mode === "cursor";
+    meshes.cursor.mesh.visible = !over && pilot.mode === "cursor";
     meshes.ring.visible = !over && pilot.mode === "sailing";
     meshes.boats.fishingBoat.hull.visible =
       !over && pilot.aboard === "fishingBoat" && pilot.mode !== "cursor";
     meshes.boats.ptBoat.hull.visible =
       !over && pilot.aboard === "ptBoat" && pilot.mode !== "cursor";
     loseSightOfHidden([meshes.boats.fishingBoat, meshes.boats.ptBoat]);
-    if (meshes.cursor.visible) this.placeCursor(meshes.cursor, centre);
+    if (meshes.cursor.mesh.visible) meshes.cursor.moveTo(centre);
     if (pilot.aboard === "none") return;
     const boat = meshes.boats[pilot.aboard];
     steer(boat, { centre, sprite: pilot });
     meshes.ring.position.set(boat.track.x(), RING_LIFT, boat.track.z());
   }
+}
 
-  /** Lays the cursor level over the highest land in its square, so no slope hides a side of it. */
-  private placeCursor(cursor: Mesh, centre: WorldPoint): void {
-    const highest = Math.max(
-      ...CURSOR_CORNERS.map((corner) =>
-        landAt(this.ground, { x: centre.x + corner.x, z: centre.z + corner.z }),
-      ),
-    );
-    cursor.position.set(centre.x, highest + CURSOR_LIFT, centre.z);
-  }
+/** Adds the cursor and the ring, each drawn over everything else; the cursor laid over the land. */
+function overlays(build: { scene: Scene; ground: GroundReading }) {
+  const addOverlay = (material: Material) => (geometry: BufferGeometry) =>
+    addHidden(build.scene, { mesh: new Mesh(geometry, material), order: OVER_EVERYTHING });
+  const drape = new Drape(cursorFrame(SIDE_STYLES.left), build.ground);
+  const addCursorMesh = addOverlay(overlayMaterial());
+  return {
+    addCursor: (geometry: BufferGeometry) => new DrapedMesh(addCursorMesh(geometry), drape),
+    addRing: addOverlay(ringMaterial()),
+  };
 }
 
 interface PilotBuild {
   readonly side: Side;
   readonly addFleet: (fleet: { kind: FleetKind; style: KitStyle }) => FleetMeshes;
-  /** Adds the cursor, drawn solid over everything else. */
-  readonly addCursor: (geometry: BufferGeometry) => Mesh;
+  /** Adds the cursor, drawn solid over everything else and laid over the land wherever it goes. */
+  readonly addCursor: (geometry: BufferGeometry) => DrapedMesh;
   /** Adds the ring round a steered boat, drawn over everything else with the sea showing through. */
   readonly addRing: (geometry: BufferGeometry) => Mesh;
 }
@@ -162,8 +150,8 @@ interface FleetBuild {
 /** A fleet in formation, with its wake riding along as part of it. */
 function fleetMeshes(build: FleetBuild): FleetMeshes {
   const { kind, style } = build.fleet;
-  const hull = new Mesh(trianglesGeometry(fleetUnderWay(kind, style)), build.materials.hull);
-  const wake = new Mesh(trianglesGeometry(fleetWakes(kind)), build.materials.wake);
+  const hull = new Mesh(berthedGeometry(berthedFleetUnderWay(kind, style)), build.materials.hull);
+  const wake = new Mesh(wakeGeometry(fleetWakePatches(kind)), build.materials.wake);
   hull.add(wake);
   addHidden(build.scene, { mesh: hull, order: 0 });
   return { hull, wake, track: new BoatTrack() };
@@ -174,14 +162,11 @@ function loseSightOfHidden(fleets: readonly FleetMeshes[]): void {
   fleets.filter((fleet) => !fleet.hull.visible).forEach((fleet) => fleet.track.lose());
 }
 
-/** The foam behind a boat: white, faint, and never hiding the water under it. */
-function wakeMaterial(): MeshBasicMaterial {
-  return new MeshBasicMaterial({
-    color: "#ffffff",
-    transparent: true,
-    opacity: 0.55,
-    depthWrite: false,
-  });
+/** The boats' material, taught to give every boat its own play, and their wakes', which follow it. */
+function playing(play: FleetPlay): { hull: Material; wake: Material } {
+  const hull = new MeshLambertMaterial({ vertexColors: true });
+  play.teach(hull);
+  return { hull, wake: wakeMaterial(play.time) };
 }
 
 /** Lit like the boats, but drawn last and through whatever stands in front of it. */

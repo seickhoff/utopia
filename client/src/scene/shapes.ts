@@ -20,26 +20,41 @@ export interface BoxSpec {
   readonly colour: Rgb;
 }
 
-type Corner = readonly [number, number, number];
+/** A point in space as three numbers: x, y and z. */
+export type Corner = readonly [number, number, number];
 
-/** The six faces of a unit box as corner indices, wound to face outward. */
+/**
+ * The faces of a unit box that can be seen as corner indices, wound to face outward. Everything
+ * stands on the ground or floats on the sea, so its floor never shows and is left out.
+ */
 const BOX_FACES: readonly (readonly [number, number, number, number])[] = [
   [0, 1, 3, 2],
   [4, 6, 7, 5],
-  [0, 4, 5, 1],
   [2, 3, 7, 6],
   [0, 2, 6, 4],
   [1, 5, 7, 3],
 ];
 
+/** A box's top, of the faces in BOX_FACES: walls under a roof leave it out. */
+const BOX_TOP = 2;
+
 export function box(spec: BoxSpec): Triangles {
+  return quads({ corners: boxCorners(spec), faces: BOX_FACES, colour: spec.colour });
+}
+
+/** A box's four sides alone, for a building whose roof covers its top. */
+export function walls(spec: BoxSpec): Triangles {
+  const sides = BOX_FACES.filter((_, face) => face !== BOX_TOP);
+  return quads({ corners: boxCorners(spec), faces: sides, colour: spec.colour });
+}
+
+function boxCorners(spec: BoxSpec): Corner[] {
   const { base, size } = spec;
-  const corners: Corner[] = [0, 1, 2, 3, 4, 5, 6, 7].map((bits) => [
+  return [0, 1, 2, 3, 4, 5, 6, 7].map((bits) => [
     base.x + ((bits & 4 ? 1 : 0) - 0.5) * size.x,
     base.y + (bits & 2 ? 1 : 0) * size.y,
     base.z + ((bits & 1 ? 1 : 0) - 0.5) * size.z,
   ]);
-  return quads({ corners, faces: BOX_FACES, colour: spec.colour });
 }
 
 /** A gable roof: a triangular prism with its ridge running east to west. */
@@ -190,13 +205,14 @@ export function merge(parts: readonly Triangles[]): Triangles {
   };
 }
 
-interface Polygons<Face> {
+/** Faces as indices into a list of corners, each wound anticlockwise seen from outside. */
+export interface Polygons<Face> {
   readonly corners: readonly Corner[];
   readonly faces: readonly Face[];
   readonly colour: Rgb;
 }
 
-function quads(polygons: Polygons<readonly [number, number, number, number]>): Triangles {
+export function quads(polygons: Polygons<readonly [number, number, number, number]>): Triangles {
   const faces = polygons.faces.flatMap(
     ([a, b, c, d]) =>
       [
@@ -207,7 +223,7 @@ function quads(polygons: Polygons<readonly [number, number, number, number]>): T
   return triangles({ ...polygons, faces });
 }
 
-function triangles(polygons: Polygons<readonly [number, number, number]>): Triangles {
+export function triangles(polygons: Polygons<readonly [number, number, number]>): Triangles {
   const corners = polygons.faces.flat().map((index) => polygons.corners[index]);
   return {
     positions: corners.flat(),

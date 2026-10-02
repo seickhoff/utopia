@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { DIORAMA_POSE, frameShot, framingDistance, project } from "../src/scene/camera-framing.js";
+import {
+  DIORAMA_POSE,
+  cameraPosition,
+  frameShot,
+  framingDistance,
+  project,
+} from "../src/scene/camera-framing.js";
 import {
   foreReefMesh,
   heightAt,
@@ -246,6 +252,29 @@ describe("camera framing", () => {
     );
 
     expect(Math.max(...xs)).toBeCloseTo(1, 2);
+  });
+
+  it("stands on the far side of what it looks at: looking east, it stands to the west", () => {
+    const pose = { ...DIORAMA_POSE, headingDegrees: 90, target: { x: 0, y: 0, z: 0 } };
+    const eye = cameraPosition(pose, 10);
+
+    expect([eye.x < 0, Math.abs(eye.z) < 1e-9, eye.y > 0]).toEqual([true, true, true]);
+  });
+
+  it("keeps the whole board in view however the view is turned, side-on included", () => {
+    const turned = [0, 90, 135, 180].map((headingDegrees) => {
+      const pose = { ...DIORAMA_POSE, headingDegrees };
+      const framing = { aspect: 16 / 9, corners: BOARD, margin: 0.04 };
+      const shot = frameShot(pose, framing);
+      return BOARD.map((corner) =>
+        project(
+          { ...pose, target: shot.target },
+          { corner, distance: shot.distance, aspect: 16 / 9 },
+        ),
+      ).every((seen) => seen.depth > 0 && Math.abs(seen.x) <= 1.001 && Math.abs(seen.y) <= 1.001);
+    });
+
+    expect(turned).toEqual([true, true, true, true]);
   });
 
   it("stands no farther back than it must", () => {

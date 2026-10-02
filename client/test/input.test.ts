@@ -61,7 +61,19 @@ describe("commandForKey", () => {
 });
 
 describe("discFromArrows", () => {
-  const disc = (...arrows: Arrow[]) => discFromArrows(new Set(arrows));
+  const disc = (...arrows: Arrow[]) => discFromArrows({ held: new Set(arrows), bearing: 0 });
+  const turned = (bearing: number, ...arrows: Arrow[]) =>
+    discFromArrows({ held: new Set(arrows), bearing });
+
+  it("turns the arrows with the view, so up steers the way the screen's up looks across the sea", () => {
+    expect([turned(90, "up"), turned(90, "right"), turned(45, "up"), turned(-90, "up")]).toEqual([
+      4, 8, 2, 12,
+    ]);
+  });
+
+  it("points the disc whichever of its sixteen ways lies nearest the screen's", () => {
+    expect([turned(30, "up"), turned(10, "up"), turned(400, "up")]).toEqual([1, 0, 2]);
+  });
 
   it("points the disc the way an arrow does", () => {
     expect([disc("up"), disc("right"), disc("down"), disc("left")]).toEqual([0, 4, 8, 12]);

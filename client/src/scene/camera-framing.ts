@@ -1,7 +1,9 @@
-/** How the diorama is looked at: from the south, tilted down at the islands. */
+/** How the diorama is looked at: tilted down at the islands, from whichever way it is turned. */
 export interface CameraPose {
   readonly fovDegrees: number;
   readonly pitchDegrees: number;
+  /** Which way across the sea it looks: 0 north, from the south as the cartridge's screen does; 90 east. */
+  readonly headingDegrees: number;
   /** The point looked at, on the sea's surface. */
   readonly target: Point3;
 }
@@ -24,6 +26,7 @@ export interface Framing {
 export const DIORAMA_POSE: CameraPose = {
   fovDegrees: 32,
   pitchDegrees: 40,
+  headingDegrees: 0,
   target: { x: 0, y: 0, z: 0.2 },
 };
 
@@ -57,7 +60,13 @@ function recentred(aim: { pose: CameraPose; framing: Framing; distance: number }
   const offCentre = (Math.max(...ys) + Math.min(...ys)) / 2;
   const halfHeight = Math.tan((pose.fovDegrees * Math.PI) / 360) * distance;
   const pitch = (pose.pitchDegrees * Math.PI) / 180;
-  const target = { ...pose.target, z: pose.target.z - (offCentre * halfHeight) / Math.sin(pitch) };
+  const { ahead } = bearingsOf(pose);
+  const along = (offCentre * halfHeight) / Math.sin(pitch);
+  const target = {
+    ...pose.target,
+    x: pose.target.x + ahead.x * along,
+    z: pose.target.z + ahead.z * along,
+  };
   return { target, distance: framingDistance({ ...pose, target }, framing) };
 }
 
@@ -65,14 +74,30 @@ const NEAREST = 2;
 const FARTHEST = 200;
 const SEARCH_STEPS = 40;
 
-/** Where the camera stands, this far from the target along the pose's line of sight. */
+/** The ways across the floor a pose looks, and to its right: each a unit step, x east and z south. */
+interface Bearings {
+  readonly ahead: { readonly x: number; readonly z: number };
+  readonly right: { readonly x: number; readonly z: number };
+}
+
+function bearingsOf(pose: CameraPose): Bearings {
+  const heading = (pose.headingDegrees * Math.PI) / 180;
+  return {
+    ahead: { x: Math.sin(heading), z: -Math.cos(heading) },
+    right: { x: Math.cos(heading), z: Math.sin(heading) },
+  };
+}
+
+/** Where the camera stands, this far from the target back along the pose's line of sight. */
 export function cameraPosition(pose: CameraPose, distance: number): Point3 {
   const pitch = (pose.pitchDegrees * Math.PI) / 180;
   const { target } = pose;
+  const { ahead } = bearingsOf(pose);
+  const back = distance * Math.cos(pitch);
   return {
-    x: target.x,
+    x: target.x - ahead.x * back,
     y: target.y + distance * Math.sin(pitch),
-    z: target.z + distance * Math.cos(pitch),
+    z: target.z - ahead.z * back,
   };
 }
 
@@ -111,15 +136,25 @@ interface Viewing {
   readonly aspect: number;
 }
 
+/** The camera's own axes: the way it looks, its up, and its right. */
+function axesOf(pose: CameraPose): { forward: Point3; up: Point3; right: Point3 } {
+  const pitch = (pose.pitchDegrees * Math.PI) / 180;
+  const { ahead, right } = bearingsOf(pose);
+  const [level, steep] = [Math.cos(pitch), Math.sin(pitch)];
+  return {
+    forward: { x: ahead.x * level, y: -steep, z: ahead.z * level },
+    up: { x: ahead.x * steep, y: level, z: ahead.z * steep },
+    right: { x: right.x, y: 0, z: right.z },
+  };
+}
+
 /** A point's place on the screen, -1 to 1 each way, and its depth in front of the camera. */
 export function project(
   pose: CameraPose,
   viewing: Viewing,
 ): { x: number; y: number; depth: number } {
   const eye = cameraPosition(pose, viewing.distance);
-  const pitch = (pose.pitchDegrees * Math.PI) / 180;
-  const forward = { x: 0, y: -Math.sin(pitch), z: -Math.cos(pitch) };
-  const up = { x: 0, y: Math.cos(pitch), z: -Math.sin(pitch) };
+  const { forward, up, right } = axesOf(pose);
   const offset = {
     x: viewing.corner.x - eye.x,
     y: viewing.corner.y - eye.y,
@@ -127,7 +162,8 @@ export function project(
   };
   const depth = dot(offset, forward);
   const halfHeight = Math.tan((pose.fovDegrees * Math.PI) / 360) * depth;
-  return { x: offset.x / (halfHeight * viewing.aspect), y: dot(offset, up) / halfHeight, depth };
+  const across = dot(offset, right);
+  return { x: across / (halfHeight * viewing.aspect), y: dot(offset, up) / halfHeight, depth };
 }
 
 function dot(a: Point3, b: Point3): number {

@@ -9,6 +9,7 @@ import {
   Scene,
   WebGLRenderer,
 } from "three";
+import { CROP_COLOURS } from "./crop-glsl.js";
 import { districtOf, isDeveloped } from "./districts/districts.js";
 import { trianglesGeometry } from "./geometry.js";
 import { fleetUnderWay, fleetWakes } from "./fleets.js";
@@ -23,20 +24,26 @@ const TILE_TOP = 0.012;
 /** Each item is shown in the player's own colour. */
 const STYLE = SIDE_STYLES.left;
 
-/** The ground each item stands on in its portrait: its lawn, paving or earth, or the sea. */
+/** The ground each item stands on in its portrait: its lawn, paving, earth, airfield or trees, or the sea. */
 const TILE_COLOURS: Readonly<Record<ItemKind, string>> = {
-  fort: "#a48d68",
+  fort: "#9aa064",
   factory: "#a9a7a0",
   crop: "#7f6446",
   school: "#6f9a4c",
   hospital: "#6f9a4c",
-  house: "#6f9a4c",
+  house: "#33502b",
   rebel: "#a48d68",
   ptBoat: "#3fa9b8",
   fishingBoat: "#3fa9b8",
 };
 const TILE_SIDES = rgb("#5b4a36");
-const LEAF = rgb("#567f3a");
+/** The crop portrait's three fields side by side, west to east: wheat, a green crop and a teal one. */
+const FIELDS: readonly { x: number; crop: string }[] = [
+  { x: -0.3, crop: CROP_COLOURS[0] },
+  { x: 0, crop: CROP_COLOURS[2] },
+  { x: 0.3, crop: CROP_COLOURS[5] },
+];
+const FIELD_ROWS = [-0.33, -0.165, 0, 0.165, 0.33];
 
 /**
  * A portrait of every item, drawn once as a small isometric diorama (the item on its own tile of
@@ -90,10 +97,12 @@ function tile(kind: ItemKind): Triangles {
   ]);
 }
 
-/** A field in rows, for the crops the terrain otherwise paints straight onto the land. */
+/** A patchwork of fields in rows, for the crops the terrain otherwise paints straight onto the land. */
 function field(): Triangles {
-  const rows = [-0.3, -0.1, 0.1, 0.3].map((z) =>
-    gableRoof({ base: { x: 0, y: 0, z }, size: { x: 0.86, y: 0.07, z: 0.15 }, colour: LEAF }),
+  const rows = FIELDS.flatMap(({ x, crop }) =>
+    FIELD_ROWS.map((z) =>
+      gableRoof({ base: { x, y: 0, z }, size: { x: 0.27, y: 0.06, z: 0.12 }, colour: rgb(crop) }),
+    ),
   );
   return merge(rows);
 }

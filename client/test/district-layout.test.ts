@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { District } from "../src/scene/districts/district.js";
 import { fittedDistrict } from "../src/scene/district-layout.js";
-import { FOOTING, type GroundReading } from "../src/scene/ground-fit.js";
+import { FOOTING, SHORE_REACH, type GroundReading } from "../src/scene/ground-fit.js";
 import { landfill } from "../src/scene/item-kits.js";
 import { box, patch, type Triangles } from "../src/scene/shapes.js";
 
@@ -31,6 +31,9 @@ const COAST: GroundReading = {
   shoreDistanceAt: (at) => (at.x < 0 ? 5 : -5),
 };
 const MIDDLE = { x: 0, z: 0 };
+/** High ground running down to a shore that runs north to south at x = 0.1. */
+const BEACH: GroundReading = { heightAt: () => 0.2, shoreDistanceAt: (at) => (0.1 - at.x) * 8 };
+const xs = (part: Triangles) => part.positions.filter((_, index) => index % 3 === 0);
 
 describe("fittedDistrict", () => {
   it("stands each building on the ground beneath it", () => {
@@ -60,5 +63,21 @@ describe("fittedDistrict", () => {
     const fillUnderLandmark = count(landfill({ width: 0.1, depth: 0.1 }));
 
     expect(count(fitted)).toBe(landmarkAndWestHut + fillUnderLandmark);
+  });
+
+  it("stands its buildings right down by the water, so long as none would stand in it", () => {
+    const district: District = { decals: [], structures: [hut(-0.3), hut(0.05), hut(0.3)] };
+
+    const fitted = fittedDistrict({ district, centre: MIDDLE, ground: BEACH });
+
+    expect(count(fitted)).toBe(count(hut(0)) * 2);
+  });
+
+  it("cuts its streets and courts off at the water's edge, as the terrain's fields are", () => {
+    const district: District = { decals: [lot(0.15)], structures: [hut(-0.3)] };
+
+    const fitted = fittedDistrict({ district, centre: MIDDLE, ground: BEACH });
+
+    expect(Math.max(...xs(fitted)).toFixed(9)).toBe((0.1 - SHORE_REACH / 8).toFixed(9));
   });
 });

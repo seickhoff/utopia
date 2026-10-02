@@ -1,5 +1,5 @@
 import { isBoat, type Side, type SquareSnapshot } from "@utopia/engine";
-import type { WorldPoint } from "../board/rom-space.js";
+import { worldOfCell } from "../board/rom-space.js";
 import { fittedDistrict } from "./district-layout.js";
 import { districtOf, isDeveloped } from "./districts/districts.js";
 import type { GroundReading } from "./ground-fit.js";
@@ -19,8 +19,6 @@ export const SIDE_STYLES: Readonly<Record<Side, KitStyle>> = {
 };
 
 const NEUTRAL: KitStyle = { accent: rgb("#cccccc") };
-const HALF_WIDTH = 10;
-const HALF_DEPTH = 5.5;
 const SINK_PER_FRAME = 0.035;
 
 const EMPTY: Triangles = { positions: [], colors: [] };
@@ -48,13 +46,13 @@ function landModel(placement: SquareOnGround): Triangles {
   const { square, ground } = placement;
   if (!isDeveloped(square.occupant)) return EMPTY;
   const district = districtOf(square.occupant, styleOf(square));
-  return fittedDistrict({ district, centre: centreOf(square), ground });
+  return fittedDistrict({ district, centre: worldOfCell(square), ground });
 }
 
 /** A fleet lying at anchor on its square, swung round a little differently on each square. */
 function boatModel(square: SquareSnapshot): Triangles {
   if (!isBoat(square.occupant)) return EMPTY;
-  const centre = centreOf(square);
+  const centre = worldOfCell(square);
   return placed(fleetAtAnchor(square.occupant, styleOf(square)), {
     offset: { x: centre.x, y: 0, z: centre.z },
     turn: ((square.row * 7 + square.col * 3) % 8) * (Math.PI / 4),
@@ -63,16 +61,12 @@ function boatModel(square: SquareSnapshot): Triangles {
 
 /** An anchored fleet going down: lower with every frame of the cartridge's animation. */
 function wreckModel(square: SquareSnapshot): Triangles {
-  const centre = centreOf(square);
+  const centre = worldOfCell(square);
   const depth = -SINK_PER_FRAME * square.wreckFrame;
   return placed(fleetAtAnchor("fishingBoat", styleOf(square)), {
     offset: { x: centre.x, y: depth, z: centre.z },
     turn: 0.4,
   });
-}
-
-function centreOf(square: SquareSnapshot): WorldPoint {
-  return { x: square.col + 0.5 - HALF_WIDTH, z: square.row + 0.5 - HALF_DEPTH };
 }
 
 function styleOf(square: SquareSnapshot): KitStyle {

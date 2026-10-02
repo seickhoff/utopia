@@ -8,6 +8,7 @@ export interface Finger extends ScreenPosition {
 /** The 3D view's camera, as two fingers turn it. */
 export interface CameraTurns {
   tiltBy(degrees: number): void;
+  turnBy(degrees: number): void;
   zoomBy(factor: number): void;
 }
 
@@ -34,14 +35,21 @@ export function reachOf(drag: Drag): number {
 }
 /** Degrees the view tilts for each page pixel two fingers slide up or down together. */
 const TILT_PER_PIXEL = 0.25;
+/**
+ * How far two fingers must twist before the view starts turning round with them: a pinch or a
+ * tilt twists the fingers a little anyway, and that should not turn the view.
+ */
+const TWIST_START_DEGREES = 12;
 
 /** What the fingers down are doing: one held still, one dragging, or two turning the camera. */
 type Gesture = "still" | "dragging" | "turning";
 
-/** Two fingers: how far apart, and how far down the page their middle is. */
+/** Two fingers: how far apart, how far down the page their middle is, and the line between them's angle. */
 interface Span {
   readonly apart: number;
   readonly middleY: number;
+  /** Degrees, growing clockwise on the page. */
+  readonly angle: number;
 }
 
 /** A finger's move: where it is now, and how the first two fingers stood before it. */
@@ -53,13 +61,17 @@ interface Step {
 /**
  * Fingers on the board. One finger tapped acts where it lifts; one finger dragged leads the cursor,
  * or drives the boat as a thumbstick. Two fingers work the 3D camera: spread or pinch to zoom, slide up or down together
- * to tilt; and once two have touched, nothing taps until every finger is off the glass.
+ * to tilt, twist to turn the view round, the board turning with them as a map does; and once two
+ * have touched, nothing taps until every finger is off the glass.
  */
 export class TouchGestures {
   private readonly fingers = new Map<number, ScreenPosition>();
   private gesture: Gesture = "still";
   /** Where the lone finger came down, to tell a tap from a drag. */
   private landed: ScreenPosition = { clientX: 0, clientY: 0 };
+  /** How far the two fingers have twisted since they came down, and whether the view has started turning. */
+  private twisted = 0;
+  private turningRound = false;
   private readonly moves: Readonly<Record<Gesture, (step: Step) => void>> = {
     still: (step) => this.stir(step.at),
     dragging: (step) => this.work.drag({ from: this.landed, to: step.at }),
@@ -71,7 +83,7 @@ export class TouchGestures {
   down(finger: Finger): void {
     this.fingers.set(finger.pointerId, positionOf(finger));
     if (this.fingers.size === 1) this.land(finger);
-    else this.gesture = "turning";
+    else this.pair();
   }
 
   move(finger: Finger): void {
@@ -92,6 +104,12 @@ export class TouchGestures {
     this.forget(finger);
   }
 
+  private pair(): void {
+    this.gesture = "turning";
+    this.twisted = 0;
+    this.turningRound = false;
+  }
+
   private land(finger: Finger): void {
     this.gesture = "still";
     this.landed = positionOf(finger);
@@ -109,6 +127,21 @@ export class TouchGestures {
     if (before === "unpaired" || after === "unpaired") return;
     this.work.camera.zoomBy(after.apart / before.apart);
     this.work.camera.tiltBy((after.middleY - before.middleY) * TILT_PER_PIXEL);
+    this.twist(turnBetween(before.angle, after.angle));
+  }
+
+  /**
+   * Turns the view against the fingers' twist, so the board turns with them; only once they have
+   * twisted past the start, and from there with every degree they twist.
+   */
+  private twist(degrees: number): void {
+    this.twisted += degrees;
+    if (!this.turningRound && Math.abs(this.twisted) < TWIST_START_DEGREES) return;
+    const turned = this.turningRound
+      ? degrees
+      : this.twisted - Math.sign(this.twisted) * TWIST_START_DEGREES;
+    this.turningRound = true;
+    this.work.camera.turnBy(-turned);
   }
 
   private forget(finger: Finger): void {
@@ -125,6 +158,15 @@ function positionOf(finger: Finger): ScreenPosition {
 function spanOf(fingers: ReadonlyMap<number, ScreenPosition>): Span | "unpaired" {
   const [first, second] = [...fingers.values()];
   if (first === undefined || second === undefined) return "unpaired";
-  const apart = Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
-  return { apart: Math.max(1, apart), middleY: (first.clientY + second.clientY) / 2 };
+  const [across, down] = [second.clientX - first.clientX, second.clientY - first.clientY];
+  return {
+    apart: Math.max(1, Math.hypot(across, down)),
+    middleY: (first.clientY + second.clientY) / 2,
+    angle: (Math.atan2(down, across) * 180) / Math.PI,
+  };
+}
+
+/** The shorter turn from one angle to another, in degrees: never more than half a circle either way. */
+function turnBetween(from: number, to: number): number {
+  return ((((to - from + 180) % 360) + 360) % 360) - 180;
 }

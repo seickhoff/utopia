@@ -30,6 +30,40 @@ export function cylinder(spec: RoundSpec): Triangles {
   return solid([...walls, ...fan({ rim, y: top, centre: spec.base })], spec.colour);
 }
 
+/** A cone rising from its rim to a point: a bell tent, a spire. */
+export function cone(spec: RoundSpec): Triangles {
+  const apex: Point = [spec.base.x, spec.base.y + spec.height, spec.base.z];
+  return solid(slopes({ rim: rimOf(spec), apex }), spec.colour);
+}
+
+export interface BlobSpec extends RoundSpec {
+  /** How far up its widest part lies, as a share of its height. */
+  readonly waist: number;
+}
+
+/**
+ * A rounded lump seen from far off: pointed above and below, widest at its waist. A tree's crown,
+ * a puff of smoke.
+ */
+export function blob(spec: BlobSpec): Triangles {
+  const { base, height } = spec;
+  const rim = rimOf({ ...spec, base: { ...base, y: base.y + height * spec.waist } });
+  const top: Point = [base.x, base.y + height, base.z];
+  const bottom: Point = [base.x, base.y, base.z];
+  const under = rim.flatMap((point, index): Point[] => [
+    bottom,
+    rim[(index + 1) % rim.length],
+    point,
+  ]);
+  return solid([...slopes({ rim, apex: top }), ...under], spec.colour);
+}
+
+/** Triangles from each pair of rim points up to a point above them, facing outward. */
+function slopes(round: { rim: readonly Point[]; apex: Point }): Point[] {
+  const { rim, apex } = round;
+  return rim.flatMap((point, index): Point[] => [point, rim[(index + 1) % rim.length], apex]);
+}
+
 /** A flat round disc facing the sky: a helipad, a roundabout. */
 export function disc(spec: Omit<RoundSpec, "height">): Triangles {
   return solid(fan({ rim: rimOf(spec), y: spec.base.y, centre: spec.base }), spec.colour);

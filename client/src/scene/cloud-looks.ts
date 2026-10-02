@@ -1,4 +1,5 @@
 import type { WeatherKind } from "@utopia/engine";
+import type { Tier } from "./cloud-heap.js";
 
 export interface RainLook {
   readonly colour: string;
@@ -23,11 +24,15 @@ export interface CloudLook {
   readonly shadow: number;
   readonly rain: RainLook | "dry";
   readonly lightningPerMinute: number;
+  /** The tiers of puffs a heaped cloud's body is piled from; none for a hurricane, a spiral with body. */
+  readonly heap: readonly Tier[];
 }
 
 /**
- * How each kind of weather looks: a rain cloud white and heaped, a storm dark and flashing, a
- * hurricane a great spiral seen from space. Every one of them casts its shape as a shadow.
+ * How each kind of weather looks: a rain cloud a white heap of cumulus, a storm a dark, flashing
+ * thunderhead spreading at its top, a hurricane a great spiral like a galaxy's, its arms dark
+ * beneath and its core towering white round its eye. Every one of them casts its shape as a shadow. A storm is as big
+ * as a rain cloud: the cartridge draws both from the same picture, the storm only in black.
  */
 export const CLOUD_LOOKS: Readonly<Record<WeatherKind, CloudLook>> = {
   rain: {
@@ -39,26 +44,39 @@ export const CLOUD_LOOKS: Readonly<Record<WeatherKind, CloudLook>> = {
     shadow: 0.55,
     rain: { colour: "#dce8ff", opacity: 0.75, speed: 1.6, veil: 0.14 },
     lightningPerMinute: 0,
+    heap: [
+      { rise: 0, spread: 0.75, count: 16, size: 0.28 },
+      { rise: 0.2, spread: 0.6, count: 11, size: 0.3 },
+      { rise: 0.36, spread: 0.42, count: 7, size: 0.3 },
+      { rise: 0.5, spread: 0.2, count: 3, size: 0.28 },
+    ],
   },
   storm: {
-    radius: 1.9,
-    height: 1.45,
+    radius: 1.7,
+    height: 1.5,
     light: "#6d7486",
     shade: "#1d1f28",
     spiral: 0,
     shadow: 0.8,
     rain: { colour: "#c8d4ea", opacity: 0.9, speed: 2.4, veil: 0.3 },
     lightningPerMinute: 14,
+    heap: [
+      { rise: 0, spread: 0.75, count: 16, size: 0.28 },
+      { rise: 0.2, spread: 0.55, count: 11, size: 0.3 },
+      { rise: 0.36, spread: 0.4, count: 7, size: 0.3 },
+      { rise: 0.5, spread: 0.6, count: 9, size: 0.24 },
+    ],
   },
   hurricane: {
     radius: 2.9,
     height: 1.05,
     light: "#ffffff",
-    shade: "#a9b3c2",
+    shade: "#4e5664",
     spiral: 1,
     shadow: 0.6,
     rain: "dry",
     lightningPerMinute: 0,
+    heap: [],
   },
 };
 

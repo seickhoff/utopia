@@ -1,5 +1,6 @@
 import { Color, ShaderMaterial, Vector3, type Texture } from "three";
 import { CLOUD_SHADE_GLSL, shadowUniforms, type ShadowSpots } from "./cloud-shadows.js";
+import { CROP_COLOURS, CROP_GLSL } from "./crop-glsl.js";
 import { HAZE_GLSL, hazeUniforms } from "./haze-glsl.js";
 import { LAND_USE_GLSL } from "./land-use-glsl.js";
 import { lightUniforms } from "./light-uniforms.js";
@@ -43,6 +44,7 @@ varying vec3 vWorld;
 ${NOISE_GLSL}
 ${HAZE_GLSL}
 ${CLOUD_SHADE_GLSL}
+${CROP_GLSL}
 ${LAND_USE_GLSL}
 ${REEF_GLSL}
 
@@ -116,11 +118,9 @@ vec3 daylight(vec3 normal, float shade) {
 
 vec3 land(vec2 place, vec3 light) {
   Lot lot = lotAt(place, vShore.x);
-  float inField = lot.cover * step(lot.use, 1.5);
-  float plants = plantRows(place);
   float rim = lot.cover * (1.0 - smoothstep(0.35, 0.9, lot.cover));
-  vec3 ground = mix(beach(place), lotGround(place, lot, plants), lot.cover) * (1.0 - rim * 0.45);
-  return ground * light * mix(1.0, 0.82 + 0.3 * plants, inField);
+  vec3 ground = mix(beach(place), lotGround(place, lot), lot.cover) * (1.0 - rim * 0.45);
+  return ground * light;
 }
 
 void main() {
@@ -183,11 +183,13 @@ function landUseUniforms(landUse: Texture) {
   const colour = (hex: string) => ({ value: new Color(hex) });
   return {
     uLandUse: { value: landUse },
-    uSoil: colour("#7f6446"),
-    uLeaf: colour("#567f3a"),
+    uCrops: { value: CROP_COLOURS.map((hex) => new Color(hex)) },
+    uVerge: colour("#5a7038"),
     uLawn: colour("#6f9a4c"),
     uPaving: colour("#a9a7a0"),
     uDirt: colour("#a48d68"),
+    uAirfield: colour("#9aa064"),
+    uCanopy: colour("#33502b"),
     uAsphalt: colour("#55585e"),
     uRoadLine: colour("#e6d58a"),
   };

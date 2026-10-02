@@ -63,6 +63,11 @@ export class ClassicView {
     this.context.putImageData(this.playfield, BORDER.across, BORDER.down);
   }
 
+  /** The cartridge's screen has no camera: it is always at rest. */
+  isAtRest(): boolean {
+    return true;
+  }
+
   /**
    * The border changes only when the labels are turned on or off, a side button is held, or the
    * year ends or play resumes.
@@ -107,6 +112,11 @@ export class ClassicView {
   trackPointer(): void {}
 
   losePointer(): void {}
+
+  /** The classic screen is never turned: its up is always north, as the cartridge's was. */
+  bearing(): number {
+    return 0;
+  }
 
   show(): void {
     this.setup.canvas.hidden = false;

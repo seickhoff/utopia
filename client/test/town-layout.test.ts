@@ -31,7 +31,10 @@ describe("townTriangles", () => {
     const { positions } = townTriangles({ squares: onlyHouse, ground: FLAT });
     const heights = positions.filter((_, index) => index % 3 === 1);
 
-    expect([Math.min(...heights), Math.max(...heights) > 0.35]).toEqual([0.2 - FOOTING, true]);
+    expect([Math.min(...heights), Math.max(...heights) > 0.2 + 0.04]).toEqual([
+      0.2 - FOOTING,
+      true,
+    ]);
   });
 
   it("leaves a planted square to the terrain, which paints its field", () => {

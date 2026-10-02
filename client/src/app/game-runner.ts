@@ -9,11 +9,15 @@ import type { GameStore } from "./game-store.js";
 export interface BoardView {
   draw(frame: GameFrame): void;
   resize(): void;
+  /** Whether the camera has caught up with where the player turned it, so a frame would show no change. */
+  isAtRest(): boolean;
 }
 
 /** What the runner needs from the controls. */
 export interface PlayerInput {
   attach(session: GameSession): void;
+  /** Only the camera's controls, telling `turned` each time they may have moved it. */
+  lookAround(turned: () => void): void;
   detach(): void;
   /** Controls that steer (the mouse) look at each frame to decide their next press. */
   onFrame(frame: GameFrame): void;
@@ -64,6 +68,11 @@ const IDLE: Running = {
   togglePause: () => {},
 };
 
+/** A frame drawn again: nothing has happened since it was first drawn, so its events are left out. */
+function stillOf(frame: GameFrame): GameFrame {
+  return { ...frame, events: [] };
+}
+
 /** Special Case: who plays before any game has begun. */
 const NO_MATCH: Match = { mine: "left", names: { left: "", right: "" }, rivalled: false };
 
@@ -86,6 +95,7 @@ export class GameRunner {
   }
 
   play(session: GameSession, match: Match): void {
+    this.stop();
     this.current = match;
     const hud = new GameHud({ store: this.setup.store, match, menu: this.setup.menu });
     this.carryOn({ session, hud });
@@ -153,7 +163,7 @@ export class GameRunner {
     this.running = {
       onFrame: () => {},
       rename: (names) => game.hud.rename(names),
-      redraw: () => this.setup.view.draw(game.session.frame()),
+      redraw: () => this.setup.view.draw(stillOf(game.session.frame())),
       wake: () => {},
       togglePause: () => this.carryOn(game),
     };
@@ -170,12 +180,28 @@ export class GameRunner {
     if (frame.events.some((event) => event.type === "gameOver")) this.finish(frame);
   }
 
+  /**
+   * The term is up: the islands stay as they were left, and the player may look round them with
+   * the camera's controls, frames drawn only while the camera moves.
+   */
   private finish(frame: GameFrame): void {
-    this.stop();
-    this.running = { ...IDLE, redraw: () => this.setup.view.draw(frame) };
+    this.setup.input.detach();
+    const still = stillOf(frame);
+    this.running = {
+      ...IDLE,
+      onFrame: () => this.settle(still),
+      redraw: () => this.setup.view.draw(still),
+    };
+    this.setup.input.lookAround(() => this.frames.start());
     const { mine, rivalled } = this.current;
     const final = presentFinal({ snapshot: frame.current, mine, rivalled });
     this.setup.store.update({ screen: "final", final });
+  }
+
+  /** Draws the finished game while the camera eases to where the player turned it, then rests. */
+  private settle(frame: GameFrame): void {
+    this.setup.view.draw(frame);
+    if (this.setup.view.isAtRest()) this.frames.stop();
   }
 
   private stop(): void {

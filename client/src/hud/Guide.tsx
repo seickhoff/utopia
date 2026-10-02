@@ -48,7 +48,7 @@ const SECTIONS: readonly GuideSection[] = [
     lines: [
       "Tap your own empty land for the build ring, then tap a choice. Tap the middle of the ring, or away from it, to close it.",
       "Tap your anchored boat to take it out, then tap open water to sail there; tap the boat again to drop anchor. Or drag a finger anywhere: the boat heads the way you drag, and stops when you lift it.",
-      "The Keypad on the left bar chooses and clears, as the controller's did. In the 3D view, pinch to zoom and slide two fingers up or down to tilt.",
+      "The Keypad on the left bar chooses and clears, as the controller's did. In the 3D view, pinch to zoom, slide two fingers up or down to tilt, and twist them to turn the view round.",
     ],
     reader: "touch",
   },

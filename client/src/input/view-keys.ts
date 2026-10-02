@@ -8,6 +8,8 @@ export interface ViewTurn {
 
 /** Degrees a press (or a key's repeat) tilts the view. */
 const TILT_STEP = 3;
+/** Degrees a press (or a key's repeat) turns the view round. */
+const TURN_STEP = 4;
 /** How much closer, or farther, a press takes the view. */
 const ZOOM_STEP = 1.12;
 
@@ -19,6 +21,14 @@ class Tilt implements ViewTurn {
   }
 }
 
+class Turn implements ViewTurn {
+  constructor(private readonly degrees: number) {}
+
+  applyTo(angle: ViewAngle): void {
+    angle.turnBy(this.degrees);
+  }
+}
+
 class Zoom implements ViewTurn {
   constructor(private readonly factor: number) {}
 
@@ -27,8 +37,13 @@ class Zoom implements ViewTurn {
   }
 }
 
-/** The camera's own keys, clear of the arrows and WASD that steer: Q and E tilt, plus and minus zoom. */
+/**
+ * The camera's own keys, clear of the arrows and WASD that steer: Q and E tilt, [ and ] turn the
+ * view round, plus and minus zoom.
+ */
 const VIEW_KEYS: Readonly<Record<string, ViewTurn>> = {
+  BracketLeft: new Turn(-TURN_STEP),
+  BracketRight: new Turn(TURN_STEP),
   KeyQ: new Tilt(-TILT_STEP),
   KeyE: new Tilt(TILT_STEP),
   PageUp: new Tilt(-TILT_STEP),

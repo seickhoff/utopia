@@ -33,6 +33,11 @@ export function worldOfSprite(point: { x: number; y: number }, size: PixelSize):
   };
 }
 
+/** The middle of a square on the floor. */
+export function worldOfCell(cell: { row: number; col: number }): WorldPoint {
+  return { x: cell.col + 0.5 - HALF_WIDTH, z: cell.row + 0.5 - HALF_DEPTH };
+}
+
 /** Where a screen pixel (0-159 across, 0-87 down) stands on the floor. */
 export function worldOfScreenPixel(pixel: { x: number; y: number }): WorldPoint {
   return { x: pixel.x / CARD_PIXELS - HALF_WIDTH, z: pixel.y / CARD_PIXELS - HALF_DEPTH };

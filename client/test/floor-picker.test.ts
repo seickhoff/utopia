@@ -47,4 +47,16 @@ describe("FloorPicker", () => {
       true,
     ]);
   });
+
+  it("takes a drag reaching into the sky as it lies on the glass, turned as the view is turned", () => {
+    const camera = new PerspectiveCamera(40, FRAME.width / FRAME.height, 0.1, 100);
+    camera.position.set(-7, 1, 0);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const canvas = { getBoundingClientRect: () => FRAME } as HTMLCanvasElement;
+    const picker = new FloorPicker({ canvas, camera });
+    const rightward = { from: { clientX: 300, clientY: 10 }, to: { clientX: 500, clientY: 10 } };
+
+    expect(degreesOf(picker.wayAcross(rightward))).toBeCloseTo(90, 3);
+  });
 });

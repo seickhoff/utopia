@@ -80,6 +80,10 @@ function BoardNotice(props: { message: string }) {
   );
 }
 
+/**
+ * An island's name and figures, drawn up against the clock. The two islands' panels mirror each
+ * other, so each figure faces its rival's across the clock, the score nearest it.
+ */
 export function IslandPanel(props: { panel: PanelViewModel; mine: boolean }) {
   const { panel } = props;
   return (
@@ -88,8 +92,8 @@ export function IslandPanel(props: { panel: PanelViewModel; mine: boolean }) {
       <dl>
         <Stat label="Gold" value={panel.gold} />
         <Stat label="People" value={panel.population} />
-        <Stat label="Score" value={panel.total} />
         <Stat label="Last year" value={panel.lastRound} />
+        <Stat label="Score" value={panel.total} />
       </dl>
     </section>
   );

@@ -1,7 +1,7 @@
-import { cylinder, disc } from "../round-shapes.js";
+import { ribbon, ribbonSkirt, type Spot } from "../path-shapes.js";
+import { blob, disc } from "../round-shapes.js";
 import {
   box,
-  gableRoof,
   merge,
   patch,
   placed,
@@ -13,12 +13,19 @@ import {
 } from "../shapes.js";
 
 /** A place on a square's floor: x to the east and z to the south, each -0.5 to 0.5. */
-export type Spot = readonly [number, number];
+export type { Spot } from "../path-shapes.js";
 /** Width (west to east), height and depth (north to south). */
 export type Size = readonly [number, number, number];
 
 const GLASS = rgb("#4a6784");
-const LEAVES = [rgb("#3b7437"), rgb("#4c8a42"), rgb("#33642f")];
+const LEAVES = [
+  rgb("#3b7437"),
+  rgb("#4c8a42"),
+  rgb("#33642f"),
+  rgb("#6f8a35"),
+  rgb("#3f7a3a"),
+  rgb("#b58a2c"),
+];
 const ASPHALT = rgb("#55585e");
 const PAINT = rgb("#e6e6e0");
 const CAR_GLASS = rgb("#27313b");
@@ -70,31 +77,30 @@ export function block(spec: BlockSpec): Triangles {
   ]);
 }
 
-export interface HouseSpec {
-  readonly spot: Spot;
-  /** Radians about the vertical, so a street of houses is not all one way round. */
-  readonly turn: number;
-  readonly walls: Rgb;
-  readonly roof: Rgb;
-}
-
-/** A small house with a pitched roof. */
-export function house(spec: HouseSpec): Triangles {
-  const home = merge([
-    box({ base: point([0, 0], 0), size: extent([0.07, 0.034, 0.052]), colour: spec.walls }),
-    gableRoof({
-      base: point([0, 0], 0.034),
-      size: extent([0.076, 0.028, 0.06]),
-      colour: spec.roof,
-    }),
-  ]);
-  return placed(home, { offset: point(spec.spot, 0), turn: spec.turn });
-}
-
-/** A tree's crown, round from above, in one of a few greens. */
+/** A tree's crown, round from above, in one of a few greens or turning gold. */
 export function tree(spot: Spot, height: number): Triangles {
   const shade = LEAVES[Math.floor(Math.abs(spot[0] * 37 + spot[1] * 91)) % LEAVES.length];
-  return cylinder({ base: point(spot, 0), radius: height * 0.45, height, sides: 6, colour: shade });
+  return blob({
+    base: point(spot, 0),
+    radius: height * 0.55,
+    height,
+    sides: 6,
+    waist: 0.45,
+    colour: shade,
+  });
+}
+
+/** A puff of smoke hanging in the air at a height: a round lump of it about half again as tall as wide. */
+export function puff(spec: { spot: Spot; y: number; radius: number; colour: Rgb }): Triangles {
+  const { radius } = spec;
+  return blob({
+    base: point(spec.spot, spec.y),
+    radius,
+    height: radius * 1.6,
+    sides: 6,
+    waist: 0.5,
+    colour: spec.colour,
+  });
 }
 
 export interface VehicleSpec {
@@ -146,6 +152,12 @@ function groundAt(spec: GroundSpec & { lift: number }): Triangles {
   const cuts = Math.max(1, Math.ceil(Math.max(width, depth) / 0.1));
   const cover = patch({ width, depth, cuts, top: spec.lift, skirt: 0.004, colour: spec.colour });
   return placed(cover, { offset: point(spec.spot, 0), turn: 0 });
+}
+
+/** A street laid along a path, its edges hanging down to meet uneven ground. */
+export function road(spec: { path: readonly Spot[]; width: number; colour: Rgb }): Triangles {
+  const strip = { ...spec, top: DECAL_LIFT };
+  return merge([ribbon(strip), ribbonSkirt({ ...strip, skirt: 0.004 })]);
 }
 
 /** A lane of asphalt from one spot to another. */

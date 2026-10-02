@@ -5,11 +5,19 @@ import {
   isOnBoard,
   nearestOnBoard,
   spriteOverWorld,
+  worldOfCell,
   worldOfScreenPixel,
   worldOfSprite,
 } from "../src/board/rom-space.js";
 
 describe("rom space", () => {
+  it("finds the middle of a square on the floor, the first card's half a unit in from the corner", () => {
+    expect([worldOfCell({ row: 0, col: 0 }), worldOfCell({ row: 10, col: 19 })]).toEqual([
+      { x: -9.5, z: -5 },
+      { x: 9.5, z: 5 },
+    ]);
+  });
+
   it("puts the first card's centre half a unit in from the board's north-west corner", () => {
     expect(worldOfSprite(squareAnchor(Square.at(0, 0)), CARD_SIZE)).toEqual({ x: -9.5, z: -5 });
   });

@@ -32,8 +32,13 @@ const ZOOM_PER_WHEEL_UNIT = 0.0015;
 
 const MAIN_BUTTON = 0;
 
+/** How much closer a turn of the wheel, or a trackpad's pinch, takes the view. */
+export function zoomOfWheel(event: WheelEvent): number {
+  return Math.exp(-event.deltaY * ZOOM_PER_WHEEL_UNIT);
+}
+
 /** How a kind of pointer plays: a mouse or a pen acts as it presses, a finger as it lifts. */
-interface PointerStyle {
+export interface PointerStyle {
   down(event: PointerEvent): void;
   move(event: PointerEvent): void;
   up(event: PointerEvent): void;
@@ -148,7 +153,7 @@ export class PointerControls {
   /** The wheel, or a trackpad's pinch, zooms the view in and out. */
   private readonly onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    this.setup.view.zoomBy(Math.exp(-event.deltaY * ZOOM_PER_WHEEL_UNIT));
+    this.setup.view.zoomBy(zoomOfWheel(event));
   };
 
   private readonly onContextMenu = (event: Event): void => {

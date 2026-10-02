@@ -4,12 +4,17 @@ import { addSky } from "../src/scene/sky-renderer.js";
 import { SEA_FRAGMENT, SEA_VERTEX } from "../src/scene/sea-shader.js";
 import { terrainMaterial } from "../src/scene/terrain-material.js";
 import { FISH_FRAGMENT, FISH_VERTEX } from "../src/scene/fish-shader.js";
+import { BOLT_FRAGMENT, BOLT_VERTEX } from "../src/scene/bolt-shaders.js";
+import { PUFF_FRAGMENT, PUFF_VERTEX } from "../src/scene/puff-shaders.js";
 import {
-  CLOUD_FRAGMENT,
-  CLOUD_VERTEX,
-  RAIN_FRAGMENT,
-  RAIN_VERTEX,
-} from "../src/scene/weather-shaders.js";
+  FUNNEL_FRAGMENT,
+  FUNNEL_VERTEX,
+  HURRICANE_FRAGMENT,
+  HURRICANE_VERTEX,
+} from "../src/scene/hurricane-shaders.js";
+import { RAIN_FRAGMENT, RAIN_VERTEX } from "../src/scene/weather-shaders.js";
+import { FLEET_PLAY_GLSL } from "../src/scene/fleet-play.js";
+import { WAKE_FRAGMENT, WAKE_VERTEX } from "../src/scene/fleet-wakes.js";
 
 /** GLSL's built-in functions: a variable or parameter by one of these names fails to compile. */
 const BUILT_INS = new Set(
@@ -45,10 +50,19 @@ function builtShaders(): Readonly<Record<string, string>> {
     seaFragment: SEA_FRAGMENT,
     fishVertex: FISH_VERTEX,
     fishFragment: FISH_FRAGMENT,
-    cloudVertex: CLOUD_VERTEX,
-    cloudFragment: CLOUD_FRAGMENT,
+    fleetPlay: FLEET_PLAY_GLSL,
+    wakeVertex: WAKE_VERTEX,
+    wakeFragment: WAKE_FRAGMENT,
     rainVertex: RAIN_VERTEX,
     rainFragment: RAIN_FRAGMENT,
+    funnelVertex: FUNNEL_VERTEX,
+    funnelFragment: FUNNEL_FRAGMENT,
+    hurricaneVertex: HURRICANE_VERTEX,
+    hurricaneFragment: HURRICANE_FRAGMENT,
+    puffVertex: PUFF_VERTEX,
+    puffFragment: PUFF_FRAGMENT,
+    boltVertex: BOLT_VERTEX,
+    boltFragment: BOLT_FRAGMENT,
   };
 }
 

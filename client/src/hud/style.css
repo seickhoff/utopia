@@ -630,24 +630,32 @@ body[data-screen="title"] #stage {
   padding: 10px calc(var(--gap) + var(--inset-right)) 10px calc(var(--gap) + var(--inset-left));
 }
 
+/* Each island's panel is only as wide as its figures, drawn up against the clock between them */
 .island-panel {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
-  padding: 8px 14px;
+  padding: 6px 14px;
   border: 1px solid var(--panel-edge);
   border-radius: 12px;
   background: var(--panel);
 }
 
 .island-panel.side-left {
+  justify-self: end;
   border-left: 6px solid var(--left);
 }
 
+/* The right island's panel mirrors the left's, so each figure faces its rival across the clock */
 .island-panel.side-right {
+  justify-self: start;
   flex-direction: row-reverse;
   border-right: 6px solid var(--right);
+}
+
+.island-panel.side-right dl {
+  flex-direction: row-reverse;
 }
 
 .island-panel h2 {
@@ -663,8 +671,14 @@ body[data-screen="title"] #stage {
 
 .island-panel dl {
   display: flex;
-  gap: 16px;
+  gap: 10px;
   margin: 0;
+}
+
+/* Wide enough for any figure, so a panel never shifts as its numbers grow */
+.stat {
+  min-width: 62px;
+  text-align: center;
 }
 
 .stat dt {

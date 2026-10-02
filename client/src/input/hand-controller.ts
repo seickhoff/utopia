@@ -36,7 +36,14 @@ export class HandController implements ControllerHands {
   private disc: DiscReading = DISC_RELEASED;
   private belief: Belief | "none" = "none";
 
-  constructor(private readonly onSideButtons: (held: ReadonlySet<SideButton>) => void) {}
+  /**
+   * `bearing` tells which way the screen's up looks across the board, degrees clockwise from
+   * north, so held arrows steer by the screen however the view is turned.
+   */
+  constructor(
+    private readonly onSideButtons: (held: ReadonlySet<SideButton>) => void,
+    private readonly bearing: () => number = () => 0,
+  ) {}
 
   plugInto(session: SessionControls): void {
     this.session = session;
@@ -100,6 +107,11 @@ export class HandController implements ControllerHands {
     this.onSideButtons(new Set(this.buttons));
   }
 
+  /** The view may have turned under the held arrows: they steer the screen's way again. */
+  faceTheView(): void {
+    if (this.arrows.size > 0) this.sendDisc();
+  }
+
   /** Everything let go at once, as when the window loses focus. */
   letGo(): void {
     this.arrows.clear();
@@ -134,7 +146,7 @@ export class HandController implements ControllerHands {
   }
 
   private sendDisc(): void {
-    const disc = discFromArrows(this.arrows);
+    const disc = discFromArrows({ held: this.arrows, bearing: this.bearing() });
     if (disc === this.disc) return;
     this.disc = disc;
     if (this.session !== "unplugged") this.session.setDisc(disc);

@@ -4,16 +4,22 @@ import type { GameFrame, GameSession } from "../session/game-session.js";
 import type { BuildMenuControls } from "./build-menu-controls.js";
 import type { HandController } from "./hand-controller.js";
 import { KeyboardControls } from "./keyboard-controls.js";
+import { LookControls } from "./look-controls.js";
 import { PointerControls, type BoardPicker } from "./pointer-controls.js";
 import { Steerer } from "./steerer.js";
 
 export interface PlayerControlsSetup {
+  readonly controller: HandController;
   readonly keyboard: KeyboardControls;
   readonly pointer: PointerControls;
   readonly steerer: Steerer;
+  readonly look: LookControls;
 }
 
-/** Everything the player plays with, attached to a game together and fed its frames. */
+/**
+ * Everything the player plays with, attached to a game together and fed its frames; and once
+ * the game is over, the camera's controls alone, to look round the islands.
+ */
 export class PlayerControls {
   constructor(private readonly setup: PlayerControlsSetup) {}
 
@@ -23,12 +29,18 @@ export class PlayerControls {
     this.setup.pointer.attach();
   }
 
+  lookAround(turned: () => void): void {
+    this.setup.look.attach(turned);
+  }
+
   detach(): void {
     this.setup.pointer.detach();
     this.setup.keyboard.detach();
+    this.setup.look.detach();
   }
 
   onFrame(frame: GameFrame): void {
+    this.setup.controller.faceTheView();
     this.setup.steerer.onFrame(frame);
   }
 }
@@ -51,5 +63,6 @@ export function playerControls(parts: ControlParts): PlayerControls {
   const steerer = new Steerer(controller, parts.menu);
   const pointer = new PointerControls({ surface, picker: view, steerer, controller, view: angle });
   const keyboard = new KeyboardControls(parts.keys, { hands: parts.menuKeys, view: angle });
-  return new PlayerControls({ keyboard, pointer, steerer });
+  const look = new LookControls({ surface, keys: parts.keys, picker: view, view: angle });
+  return new PlayerControls({ controller, keyboard, pointer, steerer, look });
 }

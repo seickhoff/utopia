@@ -1,40 +1,27 @@
-import { isWeather, type SpriteSnapshot, type WeatherKind } from "@utopia/engine";
-import {
-  BufferAttribute,
-  BufferGeometry,
-  Color,
-  CylinderGeometry,
-  DoubleSide,
-  LineBasicMaterial,
-  LineSegments,
-  Mesh,
-  PlaneGeometry,
-  ShaderMaterial,
-  Vector3,
-  Vector4,
-  type Scene,
-} from "three";
+import { isWeather, type GameEvent, type SpriteSnapshot, type WeatherKind } from "@utopia/engine";
+import { Color, CylinderGeometry, DoubleSide, Mesh, ShaderMaterial, type Scene } from "three";
 import { CARD_SIZE, worldOfSprite, type WorldPoint } from "../board/rom-space.js";
 import { CLOUD_LOOKS, lightningAt, type CloudLook, type Lightning } from "./cloud-looks.js";
+import { CloudPuffs } from "./cloud-puffs.js";
+import { HurricaneBody } from "./hurricane-body.js";
 import { landAt, type GroundReading } from "./ground-fit.js";
-import { hazeUniforms } from "./haze-glsl.js";
-import { SUNLIGHT } from "./lighting.js";
+import { LightningStrikes } from "./lightning-strikes.js";
 import { PointPool } from "./particles.js";
+import { pseudoRandom } from "./random.js";
 import type { Vec3 } from "./shapes.js";
 import { spriteSeed } from "./sprite-seed.js";
-import { CLOUD_FRAGMENT, CLOUD_VERTEX, RAIN_FRAGMENT, RAIN_VERTEX } from "./weather-shaders.js";
+import { RAIN_FRAGMENT, RAIN_VERTEX } from "./weather-shaders.js";
 
 const MAX_CLOUDS = 2;
+/** Room for the biggest heap's puffs, cloud by cloud. */
+const PUFFS_PER_CLOUD = 128;
 const SPLASHES_PER_CLOUD = 24;
 /** Splashes a second at each splash's place. */
 const SPLASH_RATE = 2.5;
-const BOLT_POINTS = 8;
 /** The rain curtain's width against its cloud's. */
 const CURTAIN_WIDTH = 0.5;
 /** See-through things are drawn in this order after the sea: rain first, its cloud on top. */
 const DRAW_ORDER = { curtain: 1, cloud: 2 };
-/** Toward the sun, in a cloud's own terms: x to the east, y to the north, z up. */
-const SUNWARD = new Vector3(SUNLIGHT.from.x, -SUNLIGHT.from.z, SUNLIGHT.from.y).normalize();
 
 interface Tints {
   readonly light: Color;
@@ -48,12 +35,29 @@ const TINTS: Readonly<Record<WeatherKind, Tints>> = {
   hurricane: tintsOf(CLOUD_LOOKS.hurricane),
 };
 
+/** A cloud's rain: the curtain it falls in. */
+/** A cloud's place in the sky: the curtain its rain falls in, and the body it has if it is a hurricane. */
 interface CloudSlot {
-  readonly cloud: Mesh;
   readonly curtain: Mesh;
-  readonly cloudLook: ShaderMaterial;
   readonly curtainLook: ShaderMaterial;
+  readonly hurricane: HurricaneBody;
 }
+
+/** A cloud this frame, and where its body is drawn: the puffs of a heap, or its slot's hurricane. */
+interface Body {
+  readonly weather: Weather;
+  readonly slot: CloudSlot;
+  readonly puffs: CloudPuffs;
+  /** Where the camera is. */
+  readonly eye: Vec3;
+}
+
+/** How each kind of cloud gets its body: rain clouds and storms heaped of puffs, a hurricane a spiral in slices. */
+const BODIES: Readonly<Record<WeatherKind, (body: Body) => void>> = {
+  rain: heapUp,
+  storm: heapUp,
+  hurricane: spiralUp,
+};
 
 /** One cloud this frame: what it is, where, and whether lightning lights it. */
 interface Weather {
@@ -67,13 +71,16 @@ interface Weather {
 
 /**
  * Rain clouds, storms and hurricanes, each over the square its damage falls on (the cartridge
- * judges a cloud by one point near its corner). A cloud is a disc drawn by a shader; rain falls
- * from it in a curtain of streaks and splashes where it lands; a storm's lightning strikes.
+ * judges a cloud by one point near its corner). Each has body: a rain cloud or a storm heaped up
+ * of puffs, a hurricane a great turning spiral stacked in slices round its eye. Rain falls in a
+ * curtain of streaks and splashes where it lands; a storm's lightning lights it from within, and
+ * strikes down onto whatever it destroys.
  */
 export class WeatherRenderer {
   private readonly slots: readonly CloudSlot[];
   private readonly splashes: PointPool;
-  private readonly bolts: Bolts;
+  private readonly puffs: CloudPuffs;
+  private readonly strikes: LightningStrikes;
 
   constructor(
     scene: Scene,
@@ -85,35 +92,67 @@ export class WeatherRenderer {
       size: 0.16,
       glowing: true,
     });
-    this.bolts = new Bolts(scene);
+    const puffs = new CloudPuffs(scene, {
+      capacity: MAX_CLOUDS * PUFFS_PER_CLOUD,
+      order: DRAW_ORDER.cloud,
+    });
+    this.puffs = puffs;
+    this.strikes = new LightningStrikes(scene, ground);
   }
 
-  update(weather: { sprites: readonly SpriteSnapshot[]; seconds: number }): void {
+  update(weather: {
+    sprites: readonly SpriteSnapshot[];
+    seconds: number;
+    events: readonly GameEvent[];
+    /** Where the camera is, for the clouds' puffs to be drawn far to near from it. */
+    eye: Vec3;
+  }): void {
     const clouds = weather.sprites.filter((sprite) => isWeather(sprite.kind));
+    const storms = clouds
+      .filter((cloud) => cloud.kind === "storm")
+      .map((cloud) => worldOfSprite(cloud, CARD_SIZE));
+    this.strikes.hear({ events: weather.events, storms, seconds: weather.seconds });
     this.splashes.begin();
-    this.bolts.begin();
+    this.puffs.begin();
     this.slots.forEach((slot, index) =>
-      this.show({ slot, cloud: clouds[index], seconds: weather.seconds }),
+      this.show({ slot, cloud: clouds[index], seconds: weather.seconds, eye: weather.eye }),
     );
     this.splashes.finish();
-    this.bolts.finish();
+    this.puffs.finish();
+    this.strikes.draw(weather.seconds);
   }
 
-  private show(showing: { slot: CloudSlot; cloud?: SpriteSnapshot; seconds: number }): void {
-    const { slot, cloud, seconds } = showing;
-    slot.cloud.visible = false;
+  private show(showing: {
+    slot: CloudSlot;
+    cloud?: SpriteSnapshot;
+    seconds: number;
+    eye: Vec3;
+  }): void {
+    const { slot, cloud, seconds, eye } = showing;
     slot.curtain.visible = false;
+    slot.hurricane.hide();
     if (cloud === undefined || !isWeather(cloud.kind)) return;
-    const look = CLOUD_LOOKS[cloud.kind];
-    const seed = spriteSeed(cloud.id);
-    const centre = worldOfSprite(cloud, CARD_SIZE);
-    const lightning = lightningAt({ seconds, seed, look });
-    const weather: Weather = { kind: cloud.kind, look, centre, seed, seconds, lightning };
-    floatCloud(slot, weather);
-    if (look.rain === "dry") return;
+    const weather = this.weatherOf({ cloud, kind: cloud.kind, seconds });
+    BODIES[cloud.kind]({ weather, slot, puffs: this.puffs, eye });
+    if (weather.look.rain === "dry") return;
     pourRain(slot, weather);
     this.splash(weather);
-    this.bolts.strike(weather);
+  }
+
+  /** A cloud this frame, lit by its own flashes and by any strike it is sending down. */
+  private weatherOf(sighting: {
+    cloud: SpriteSnapshot;
+    kind: WeatherKind;
+    seconds: number;
+  }): Weather {
+    const { cloud, kind, seconds } = sighting;
+    const look = CLOUD_LOOKS[kind];
+    const seed = spriteSeed(cloud.id);
+    const centre = worldOfSprite(cloud, CARD_SIZE);
+    const flashes = lightningAt({ seconds, seed, look });
+    const struck = this.strikes.glowNear({ centre, radius: look.radius, seconds });
+    const lightning = { ...flashes, brightness: Math.max(flashes.brightness, struck) };
+    return { kind, look, centre, seed, seconds, lightning };
   }
 
   /** Drops landing round the foot of the curtain, each flaring and fading at its own moment. */
@@ -133,16 +172,24 @@ export class WeatherRenderer {
   }
 }
 
-function floatCloud(slot: CloudSlot, weather: Weather): void {
+/** A heaped cloud's puffs over its square, lit by the sun and by its lightning. */
+function heapUp(cloud: Body): void {
+  const { weather } = cloud;
   const { look, centre } = weather;
-  slot.cloud.visible = true;
-  slot.cloud.position.set(centre.x, look.height, centre.z);
-  slot.cloud.scale.set(look.radius, 1, look.radius);
-  const { uniforms } = slot.cloudLook;
-  uniforms.uShape.value.set(weather.seed, look.spiral, weather.seconds, 0);
-  uniforms.uLight.value = TINTS[weather.kind].light;
-  uniforms.uShade.value = TINTS[weather.kind].shade;
-  uniforms.uFlash.value = weather.lightning.brightness;
+  cloud.puffs.heap({
+    eye: cloud.eye,
+    cloud: { radius: look.radius, tiers: look.heap, seed: weather.seed },
+    base: { x: centre.x, y: look.height, z: centre.z },
+    seconds: weather.seconds,
+    tints: TINTS[weather.kind],
+    flash: weather.lightning.brightness,
+  });
+}
+
+/** A hurricane's spiral, sliced up into its body over its square. */
+function spiralUp({ weather, slot }: Body): void {
+  const { centre, look, seed, seconds } = weather;
+  slot.hurricane.show({ centre, look, seed, seconds, tints: TINTS[weather.kind] });
 }
 
 function pourRain(slot: CloudSlot, weather: Weather): void {
@@ -161,87 +208,14 @@ function pourRain(slot: CloudSlot, weather: Weather): void {
   uniforms.uColour.value = TINTS[weather.kind].rain;
 }
 
-/** Lightning: a jagged line from a storm cloud to the ground, for the moment of a flash. */
-class Bolts {
-  private readonly points = new Float32Array(MAX_CLOUDS * (BOLT_POINTS - 1) * 6);
-  private readonly geometry = new BufferGeometry();
-  private segments = 0;
-
-  constructor(scene: Scene) {
-    this.geometry.setAttribute("position", new BufferAttribute(this.points, 3));
-    const bolts = new LineSegments(this.geometry, new LineBasicMaterial({ color: "#f6f8ff" }));
-    bolts.frustumCulled = false;
-    scene.add(bolts);
-  }
-
-  begin(): void {
-    this.segments = 0;
-  }
-
-  strike(weather: Weather): void {
-    if (weather.lightning.brightness === 0) return;
-    const path = boltPath(weather);
-    path.slice(1).forEach((to, index) => {
-      const from = path[index];
-      this.points.set([from.x, from.y, from.z, to.x, to.y, to.z], this.segments * 6);
-      this.segments += 1;
-    });
-  }
-
-  finish(): void {
-    this.geometry.setDrawRange(0, this.segments * 2);
-    this.geometry.attributes.position.needsUpdate = true;
-  }
-}
-
-/** From the cloud's base down to a point near its middle, zigzagging; new for every flash. */
-function boltPath(weather: Weather): Vec3[] {
-  const { centre, look } = weather;
-  const seed = weather.lightning.flash * 31 + weather.seed * 1000;
-  const reach = look.radius * CURTAIN_WIDTH;
-  const landing = {
-    x: centre.x + (pseudoRandom(seed) - 0.5) * reach,
-    z: centre.z + (pseudoRandom(seed + 0.3) - 0.5) * reach,
-  };
-  return Array.from({ length: BOLT_POINTS }, (_, index) => {
-    const along = index / (BOLT_POINTS - 1);
-    const jitter = index === 0 || index === BOLT_POINTS - 1 ? 0 : 0.28;
-    return {
-      x: centre.x + (landing.x - centre.x) * along + (pseudoRandom(seed + index) - 0.5) * jitter,
-      y: (look.height - 0.1) * (1 - along),
-      z: centre.z + (landing.z - centre.z) * along + (pseudoRandom(seed - index) - 0.5) * jitter,
-    };
-  });
-}
-
 function cloudSlot(scene: Scene): CloudSlot {
-  const cloudLook = cloudMaterial();
   const curtainLook = curtainMaterial();
-  const disc = new PlaneGeometry(2, 2).rotateX(-Math.PI / 2);
   const curtain = new CylinderGeometry(1, 1.1, 1, 28, 1, true);
   return {
-    cloud: added(scene, { mesh: new Mesh(disc, cloudLook), order: DRAW_ORDER.cloud }),
     curtain: added(scene, { mesh: new Mesh(curtain, curtainLook), order: DRAW_ORDER.curtain }),
-    cloudLook,
     curtainLook,
+    hurricane: new HurricaneBody(scene, { look: CLOUD_LOOKS.hurricane, order: DRAW_ORDER.cloud }),
   };
-}
-
-function cloudMaterial(): ShaderMaterial {
-  return new ShaderMaterial({
-    vertexShader: CLOUD_VERTEX,
-    fragmentShader: CLOUD_FRAGMENT,
-    transparent: true,
-    depthWrite: false,
-    uniforms: {
-      uShape: { value: new Vector4() },
-      uLight: { value: new Color() },
-      uShade: { value: new Color() },
-      uFlash: { value: 0 },
-      uSun: { value: SUNWARD },
-      ...hazeUniforms(),
-    },
-  });
 }
 
 function curtainMaterial(): ShaderMaterial {
@@ -272,9 +246,4 @@ function added(scene: Scene, placing: { mesh: Mesh; order: number }): Mesh {
 function tintsOf(look: CloudLook): Tints {
   const rain = look.rain === "dry" ? look.light : look.rain.colour;
   return { light: new Color(look.light), shade: new Color(look.shade), rain: new Color(rain) };
-}
-
-function pseudoRandom(value: number): number {
-  const mixed = Math.sin(value * 12.9898 + 78.233) * 43758.5453;
-  return mixed - Math.floor(mixed);
 }

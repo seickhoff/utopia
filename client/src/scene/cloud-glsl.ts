@@ -4,6 +4,9 @@
  * 1 each way, x to the east and y to the north; its shape is a vec4 of (seed, spiral 0 or 1, the
  * time, unused). It needs NOISE_GLSL included before it.
  */
+/** How fast a hurricane's spiral turns, radians a second, anticlockwise seen from above. */
+export const HURRICANE_SPIN = 0.35;
+
 export const CLOUD_SHAPE_GLSL = /* glsl */ `
 /** How deep a heaped cumulus is: most in the middle, in lumps toward its rim, none past it. */
 float cumulusDepth(vec2 disc, float seed) {
@@ -21,15 +24,15 @@ float cumulus(vec2 disc, float seed) {
  */
 float hurricane(vec2 disc, float seed, float time) {
   float r = max(length(disc), 0.001);
-  float turn = atan(disc.y, disc.x) + 3.0 * log(r) - time * 0.35;
+  float turn = atan(disc.y, disc.x) + 3.0 * log(r) - time * ${HURRICANE_SPIN.toFixed(2)};
   vec2 ring = vec2(cos(turn), sin(turn));
   float coarse = fbm(ring * 2.2 + log(r) * vec2(0.9, 0.5) + seed * 11.0);
-  float fine = fbm(ring * 7.0 + log(r) * vec2(3.0, 2.0) + seed * 5.0);
+  float fine = fbm(ring * 4.0 + log(r) * vec2(1.6, 1.1) + seed * 5.0);
   float arms = smoothstep(-0.35, 0.85, cos(turn * 2.0 + coarse * 3.0));
   float core = 1.0 - smoothstep(0.26, 0.52, r + (coarse - 0.5) * 0.22);
-  float eye = smoothstep(0.022, 0.055, r);
+  float eye = smoothstep(0.045, 0.1, r);
   float rim = 1.0 - smoothstep(0.62, 1.0, r);
-  float bands = arms * (0.3 + 0.85 * fine) * rim;
+  float bands = arms * (0.55 + 0.55 * fine) * rim;
   float outflow = fine * fine * 0.5 * rim;
   return clamp(max(core * (0.88 + 0.24 * fine), max(bands, outflow)) * eye, 0.0, 1.0);
 }

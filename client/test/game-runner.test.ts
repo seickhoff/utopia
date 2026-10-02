@@ -33,27 +33,46 @@ class TickedFrames implements FrameDriver {
 
 class RecordingView implements BoardView {
   readonly drawn: GameFrame[] = [];
+  /** Whether the camera has caught up with where the player turned it. */
+  atRest = true;
 
   draw(frame: GameFrame): void {
     this.drawn.push(frame);
   }
 
   resize(): void {}
+
+  isAtRest(): boolean {
+    return this.atRest;
+  }
 }
 
-/** The player's controls: whether they are playing the game. */
+/** The player's controls: whether they are playing the game, or only looking round it. */
 class RecordingInput implements PlayerInput {
   attached = false;
+  looking = false;
+  private turned = () => {};
 
   attach(): void {
     this.attached = true;
   }
 
+  lookAround(turned: () => void): void {
+    this.looking = true;
+    this.turned = turned;
+  }
+
   detach(): void {
     this.attached = false;
+    this.looking = false;
   }
 
   onFrame(): void {}
+
+  /** The player turns the camera: zooms, tilts or looks elsewhere. */
+  turnTheCamera(): void {
+    this.turned();
+  }
 }
 
 /** A session that hands over the same frame every time. */
@@ -98,6 +117,12 @@ function aFrame(seconds: number): GameFrame {
 
 const anOverFrame = () => aFrame(40);
 const aPlayingFrame = () => aFrame(1);
+/** A frame in play in which something happened: a round began. */
+const aBusyPlayingFrame = (): GameFrame => ({
+  ...aPlayingFrame(),
+  events: [{ type: "roundStarted", round: 2 }],
+});
+const hadEvents = (frames: readonly GameFrame[]) => frames.map((frame) => frame.events.length > 0);
 
 function aRunner() {
   const view = new RecordingView();
@@ -116,6 +141,23 @@ function aRunner() {
   return { runner, view, input, paused, tick: () => frames.tick(), running: () => frames.running };
 }
 
+/** A runner whose game has just ended, its camera still easing toward where it was turned. */
+function aFinishedRunner() {
+  const parts = aRunner();
+  parts.view.atRest = false;
+  parts.runner.play(new StillSession(anOverFrame()), MATCH);
+  parts.tick();
+  return parts;
+}
+
+/** A runner whose game has ended, its camera come to rest and its frames stopped. */
+function aRestingRunner() {
+  const parts = aFinishedRunner();
+  parts.view.atRest = true;
+  parts.tick();
+  return parts;
+}
+
 /** A runner with a game in the browser under way, paused by its player. */
 function aPausedRunner() {
   const parts = aRunner();
@@ -125,7 +167,59 @@ function aPausedRunner() {
 }
 
 describe("GameRunner once the game is over", () => {
-  it("draws the final picture again when the page changes, as no more frames come", () => {
+  it("lets go of the game's controls, keeping only the camera's to look round with", () => {
+    const { input } = aFinishedRunner();
+
+    expect([input.attached, input.looking]).toEqual([false, true]);
+  });
+
+  it("draws on while the camera comes to rest", () => {
+    const { view, tick, running } = aFinishedRunner();
+
+    tick();
+
+    expect([view.drawn.length, running()]).toEqual([2, true]);
+  });
+
+  it("draws no more frames once the camera is at rest", () => {
+    const { running } = aRestingRunner();
+
+    expect(running()).toBe(false);
+  });
+
+  it("takes up the frames again when the player turns the camera", () => {
+    const { input, running } = aRestingRunner();
+
+    input.turnTheCamera();
+
+    expect(running()).toBe(true);
+  });
+
+  it("stops looking round when the player goes back to the title", () => {
+    const { runner, input } = aRestingRunner();
+
+    runner.showTitle();
+
+    expect(input.looking).toBe(false);
+  });
+
+  it("hands the game's controls back for the next game", () => {
+    const { runner, input } = aRestingRunner();
+
+    runner.play(new StillSession(aPlayingFrame()), MATCH);
+
+    expect([input.attached, input.looking]).toEqual([true, false]);
+  });
+
+  it("draws the islands on with the last moment's events left out, as they were drawn once", () => {
+    const { view, tick } = aFinishedRunner();
+
+    tick();
+
+    expect(hadEvents(view.drawn)).toEqual([true, false]);
+  });
+
+  it("draws the final picture again when the page changes", () => {
     const { runner, view, tick } = aRunner();
     runner.play(new StillSession(anOverFrame()), MATCH);
     tick();
@@ -224,6 +318,16 @@ describe("GameRunner paused by its player", () => {
     runner.refresh();
 
     expect(view.drawn).toHaveLength(1);
+  });
+
+  it("draws the waiting game again with its last moment's events left out, as they were drawn once", () => {
+    const { runner, view } = aRunner();
+    runner.play(new StillSession(aBusyPlayingFrame()), MATCH);
+    runner.togglePause();
+
+    runner.refresh();
+
+    expect(hadEvents(view.drawn)).toEqual([false]);
   });
 
   it("stays paused when the player looks back", () => {

@@ -17,6 +17,7 @@ const KEY_USES: readonly ControlUse[] = [
   { controls: ["Backspace"], does: "clear" },
   { controls: ["Esc"], does: "pause" },
   { controls: ["Q", "E"], does: "tilt" },
+  { controls: ["[", "]"], does: "turn" },
   { controls: ["+", "−"], does: "or scroll to zoom" },
   { controls: ["V"], does: "classic view" },
   { controls: ["M"], does: "sound" },
@@ -29,6 +30,7 @@ const TOUCH_USES: readonly ControlUse[] = [
   { controls: ["Drag"], does: "anywhere to steer" },
   { controls: ["Pinch"], does: "to zoom" },
   { controls: ["Two fingers"], does: "up or down to tilt" },
+  { controls: ["Twist"], does: "to turn" },
 ];
 
 /**

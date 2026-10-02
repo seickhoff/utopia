@@ -64,7 +64,7 @@ export class KeyboardControls {
 }
 
 /** Keys typed into a text field are the field's, not the game's. */
-function isTyping(event: KeyboardEvent): boolean {
+export function isTyping(event: KeyboardEvent): boolean {
   const element = event.target as HTMLElement | undefined;
   return element?.tagName === "INPUT" || element?.tagName === "TEXTAREA";
 }

@@ -17,14 +17,14 @@ function boardWith(builds: readonly { square: Square; key: number }[]) {
 }
 
 describe("land use", () => {
-  it("names each item's ground: fields, lawns, paving or packed earth", () => {
+  it("names each item's ground: an airfield's grass, fields, lawns, paving, a suburb's trees or packed earth", () => {
     expect(ITEM_KINDS.map(landUseOf)).toEqual([
-      "dirt",
+      "airfield",
       "paved",
       "field",
       "lawn",
       "lawn",
-      "lawn",
+      "suburb",
       "dirt",
       "bare",
       "bare",
@@ -48,9 +48,25 @@ describe("land use", () => {
     ]);
   });
 
-  it("leaves every other square bare", () => {
-    const uses = landUseMap(boardWith([{ square: Square.at(3, 2), key: 3 }]).squares);
+  it("leaves every other square of land bare", () => {
+    const board = boardWith([{ square: Square.at(3, 2), key: 3 }]);
+    const uses = landUseMap(board.squares);
+    const onLand = board.squares
+      .filter((square) => square.terrain === "land")
+      .map((square) => uses[square.row * BOARD_WIDTH + square.col]);
 
-    expect(uses.reduce((sum, value) => sum + value, 0)).toBe(LAND_USE_CODES.field);
+    expect(onLand.reduce((sum, value) => sum + value, 0)).toBe(LAND_USE_CODES.field);
+  });
+
+  it("marks the sea as sea, so the land in use beside it runs right down to the water", () => {
+    const board = boardWith([]);
+    const land = new Set(
+      board.squares
+        .filter((square) => square.terrain === "land")
+        .map((square) => square.row * BOARD_WIDTH + square.col),
+    );
+    const sea = [...landUseMap(board.squares)].filter((_, index) => !land.has(index));
+
+    expect([sea.length > 100, new Set(sea)]).toEqual([true, new Set([LAND_USE_CODES.sea])]);
   });
 });
